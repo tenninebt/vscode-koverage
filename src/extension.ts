@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { FileCoverageDataProvider, FileCoverage} from './dataProvider';
+import { FileCoverageDataProvider, CoverageNode} from './dataProvider';
 import { CoverageParser } from './coverage-system/coverage-parser';
 import { FilesLoader, Config } from './coverage-system/files-loader';
 
@@ -32,7 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
 		fileCoverageDataProvider.refresh()
 	);
 
-	vscode.commands.registerCommand('vscodeKoverage.openFile', (node: FileCoverage) =>
+	vscode.commands.registerCommand('vscodeKoverage.openFile', (node: CoverageNode) =>
 		vscode.commands.executeCommand('vscode.open', node.label)
 	);
 	//context.subscriptions.push(disposable);

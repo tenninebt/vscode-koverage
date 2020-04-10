@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import * as path from 'path';
+import * as iopath from 'path';
 import { CoverageParser } from './coverage-system/coverage-parser';
 import { FilesLoader } from './coverage-system/files-loader';
 import { Command, Uri } from 'vscode';
+import { debuglog } from 'util';
 
-export class FileCoverageDataProvider implements vscode.TreeDataProvider<FileCoverage> {
+export class FileCoverageDataProvider implements vscode.TreeDataProvider<CoverageNode> {
     private readonly workspaceRoot: string;
     private readonly coverageParser: CoverageParser;
     private readonly filesLoader: FilesLoader;
@@ -26,39 +27,91 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<FileCov
         this.filesLoader = filesLoader;
     }
 
-    getTreeItem(element: FileCoverage): vscode.TreeItem {
+    getTreeItem(element: CoverageNode): vscode.TreeItem {
         return element;
     }
 
-    getChildren(element?: FileCoverage): Thenable<FileCoverage[]> {
+    getChildren(element?: CoverageNode): Thenable<CoverageNode[]> {
         if (!this.workspaceRoot) {
             vscode.window.showInformationMessage('No file coverage in empty workspace');
             return Promise.resolve([]);
         }
 
         if (!element) {
-            const filesCoverage = this.filesLoader
-                .findCoverageFiles()
-                .then(fileNames => this.filesLoader.loadDataFiles(fileNames))
-                .then(files => this.coverageParser.filesToSections(files))
-                .then(coverage => {
-                    return Array.from(coverage).map(([fileName, coverageData]) => {
-                        const coveragePercent = coverageData.lines.hit / coverageData.lines.found * 100;
-                        const coverageLevel = 
-                            coveragePercent >= 70 ? CoverageLevel.High :
-                            coveragePercent >= 50 ? CoverageLevel.Medium : 
-                            CoverageLevel.Low;
-                        return new FileCoverage(fileName, coveragePercent, coverageLevel, vscode.TreeItemCollapsibleState.None);
-                    }).sort((a, b) => a.filePath.localeCompare(b.filePath));
+            return this
+                .getIndexedCoverageData()
+                .then(indexedCoverageData => {
+                    for(let node of indexedCoverageData.values()){
+                        if (node.depth === 0) {
+                            return node.children;
+                        }
+                    }
                 });
-            return filesCoverage;
+        } else {
+            return Promise.resolve(element.children);
         }
-        
-        return Promise.resolve([]);
     }
 
-    private _onDidChangeTreeData: vscode.EventEmitter<FileCoverage | undefined> = new vscode.EventEmitter<FileCoverage | undefined>();
-    readonly onDidChangeTreeData: vscode.Event<FileCoverage | undefined> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<CoverageNode | undefined> = new vscode.EventEmitter<CoverageNode | undefined>();
+    readonly onDidChangeTreeData: vscode.Event<CoverageNode | undefined> = this._onDidChangeTreeData.event;
+
+    private async getRawCoverageData(): Promise<[string, any][]> {
+        let coverageData = await this.filesLoader
+            .findCoverageFiles()
+            .then(fileNames => this.filesLoader.loadDataFiles(fileNames))
+            .then(async files => Array.from(await this.coverageParser.filesToSections(files)));
+        return coverageData;
+    }
+
+    private async getIndexedCoverageData(): Promise<Map<string, CoverageNode>> {
+
+        let coverageData = await this.getRawCoverageData();
+        let nodesMap: Map<string, CoverageNode> = new Map<string, CoverageNode>();
+        coverageData.forEach(([fullPath, coverageData]) => {
+
+            let pathSteps = fullPath.split('/');
+            let parentPath = "";
+            let path = "";
+
+            for (let index = 0; index < pathSteps.length; index++) {
+                const step = pathSteps[index];
+                parentPath = path;
+                path = iopath.join(path, step);
+
+                if (!nodesMap.has(parentPath)) {
+                    nodesMap.set(parentPath, new FolderCoverageNode(parentPath, parentPath, index, [], this.getCoverageLevel));
+                }
+
+                const parentNode = nodesMap.get(parentPath);
+                if (parentNode instanceof FolderCoverageNode) {
+                    if (index === pathSteps.length - 1) {
+                        const node = new FileCoverageNode(path, step, index, this.getCoverageLevel, coverageData.lines.found, coverageData.lines.hit);
+                        parentNode.children.push(node);
+                        nodesMap.set(path, node);
+                    } else {
+                        if (!nodesMap.has(path)) {
+                            const node = new FolderCoverageNode(path, step, index, [], this.getCoverageLevel);
+                            parentNode.children.push(node);
+                            nodesMap.set(path, node);
+                        }
+                    }
+                } else {
+                    debuglog("Weird case !!!!");
+                }
+            }
+        });
+
+        return nodesMap;
+    }
+
+    //TODO should be based on the config
+    public getCoverageLevel(coveragePercent: number): CoverageLevel {
+        const coverageLevel =
+            coveragePercent >= 70 ? CoverageLevel.High :
+                coveragePercent >= 50 ? CoverageLevel.Medium :
+                    CoverageLevel.Low;
+        return coverageLevel;
+    }
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
@@ -70,26 +123,37 @@ enum CoverageLevel {
     Medium = 'medium',
     High = 'high'
 }
-export class FileCoverage extends vscode.TreeItem {
+
+export abstract class CoverageNode extends vscode.TreeItem {
     constructor(
-        public readonly filePath: string,
-        private coveragePercent: Number,
-        private coverageLevel: CoverageLevel,
-        public readonly collapsibleState: vscode.TreeItemCollapsibleState
+        public readonly path: string,
+        public readonly label: string,
+        public readonly depth: number,
+        public readonly children: CoverageNode[],
+        protected readonly getCoverageLevel: (coveragePercent: number) => CoverageLevel,
+        collapsibleState: vscode.TreeItemCollapsibleState | undefined 
     ) {
-        super(filePath, collapsibleState);
+        super(label, collapsibleState);
     }
 
+    public getCoveragePercent(): number {
+        return this.coveredLinesCount / this.totalLinesCount * 100;
+    }
+
+    abstract get totalLinesCount(): number;
+
+    abstract get coveredLinesCount(): number;
+
     get tooltip(): string {
-        return `${this.label}-${this.coveragePercent}`;
+        return `${this.label}-${this.getCoveragePercent()}`;
     }
 
     get description(): string {
-        return this.coveragePercent.toPrecision(2) + '%';
+        return this.getCoveragePercent().toPrecision(2) + '%';
     }
 
     get resourceUri(): Uri {
-        return Uri.file(this.filePath);
+        return Uri.file(this.path);
     }
 
     get command(): Command {
@@ -100,12 +164,56 @@ export class FileCoverage extends vscode.TreeItem {
         };
     }
 
+    private _getCoverageLevel(): CoverageLevel {
+        return this.getCoverageLevel(this.getCoveragePercent());
+    }
+
     get iconPath() {
-        const light = path.join(__filename, '..', '..', 'resources', 'light', `${this.coverageLevel.toString()}.svg`);
-        const dark = path.join(__filename, '..', '..', 'resources', 'dark', `${this.coverageLevel.toString()}.svg`);
+        const light = iopath.join(__filename, '..', '..', 'resources', 'light', `${this._getCoverageLevel().toString()}.svg`);
+        const dark = iopath.join(__filename, '..', '..', 'resources', 'dark', `${this._getCoverageLevel().toString()}.svg`);
         return {
             light: light,
             dark: dark
         };
+    }
+}
+
+class FolderCoverageNode extends CoverageNode {
+
+    constructor(
+        public readonly path: string,
+        public readonly label: string,
+        public readonly depth: number,
+        public readonly children: CoverageNode[] = [],
+        public readonly getCoverageLevel: (coveragePercent: number) => CoverageLevel,
+    ) {
+        super(path, label, depth, children, getCoverageLevel, vscode.TreeItemCollapsibleState.Collapsed);
+    }
+
+    get totalLinesCount(): number {
+        var sum = 0;
+        this.children.forEach(n => sum += n.totalLinesCount);
+        return sum;
+    }
+
+    get coveredLinesCount(): number {
+        var sum = 0;
+        this.children.forEach(n => sum += n.coveredLinesCount);
+        return sum;
+    }
+}
+
+
+class FileCoverageNode extends CoverageNode {
+
+    constructor(
+        public readonly path: string,
+        public readonly label: string,
+        public readonly depth: number,
+        public readonly getCoverageLevel: (coveragePercent: number) => CoverageLevel,
+        public readonly totalLinesCount: number,
+        public readonly coveredLinesCount: number,
+    ) {
+        super(path, label, depth, [], getCoverageLevel, vscode.TreeItemCollapsibleState.None);
     }
 }
