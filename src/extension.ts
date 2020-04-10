@@ -31,10 +31,12 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand('vscodeKoverage.refresh', () =>
 		fileCoverageDataProvider.refresh()
 	);
-
+	//TODO fix this command
 	vscode.commands.registerCommand('vscodeKoverage.openFile', (node: CoverageNode) =>
 		vscode.commands.executeCommand('vscode.open', node.label)
 	);
+
+	//TODO search, collapse all, expand all and view as tree/flat (filters? Only low, or < Coverage level)
 	//context.subscriptions.push(disposable);
 }
 
