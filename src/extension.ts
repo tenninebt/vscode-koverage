@@ -1,9 +1,10 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { FileCoverageDataProvider, CoverageNode} from './dataProvider';
-import { CoverageParser } from './coverage-system/coverage-parser';
-import { FilesLoader, Config } from './coverage-system/files-loader';
+import { FileCoverageDataProvider, CoverageNode } from './dataProvider';
+import { CoverageParser } from './coverage-parser';
+import { FilesLoader } from './files-loader';
+import { ConfigStore } from './configStore';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -11,33 +12,41 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "vscodeKoverage" is now active!');
+	console.log('Congratulations, your extension "koverage" is now active!');
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
 
-	const outputChannel = vscode.window.createOutputChannel(`koverage`);
-	const config = new Config();
-	const fileCoverageDataProvider = new FileCoverageDataProvider(vscode.workspace.rootPath, new CoverageParser(outputChannel), new FilesLoader(config));
-	// vscode.window.registerTreeDataProvider(
-	// 	'vscodeKoverage', new FileCoverageDataProvider(vscode.workspace.rootPath, new CoverageParser(outputChannel), new FilesLoader(config))
+	const outputChannel = vscode.window.createOutputChannel(`Koverage`);
+	const configStore = new ConfigStore(outputChannel);
+	const fileCoverageDataProvider = new FileCoverageDataProvider(
+		configStore,
+		new CoverageParser(outputChannel),
+		new FilesLoader(configStore),
+		outputChannel);
 
-	// );
-	vscode.window.createTreeView('vscodeKoverage', {
-		treeDataProvider: fileCoverageDataProvider
+	let treeView = vscode.window.createTreeView('koverage', {
+		treeDataProvider: fileCoverageDataProvider,
+		showCollapseAll: true,
+		canSelectMany: false
 	});
-	
-	vscode.commands.registerCommand('vscodeKoverage.refresh', () =>
+
+	// --- Commands
+	let refresh = vscode.commands.registerCommand('koverage.refresh', () =>
 		fileCoverageDataProvider.refresh()
 	);
 	//TODO fix this command
-	vscode.commands.registerCommand('vscodeKoverage.openFile', (node: CoverageNode) =>
-		vscode.commands.executeCommand('vscode.open', node.label)
-	);
+	let openFile = vscode.commands.registerCommand('koverage.openFile', (node: CoverageNode) => {
+		if (node.command) {
+			vscode.commands.executeCommand(node.command.command || '', node.command.arguments);
+		}
+	});
 
-	//TODO search, collapse all, expand all and view as tree/flat (filters? Only low, or < Coverage level)
-	//context.subscriptions.push(disposable);
+	context.subscriptions.push(refresh);
+	context.subscriptions.push(openFile);
+	context.subscriptions.push(treeView);
+	context.subscriptions.push(outputChannel);
 }
 
 // this method is called when your extension is deactivated
