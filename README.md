@@ -4,6 +4,9 @@ This extension adds a tree view to the test view container. It shows the coverag
 
 ## Features
 
+![Screenshot](Screenshot_1.png)
+
+![Demo](Screen_Recording_1.gif)
 
 ## Requirements
 
