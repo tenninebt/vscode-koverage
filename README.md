@@ -4,7 +4,7 @@ This extension adds a tree view to the test view container. It shows the coverag
 
 ## Features
 
-![Demo](Screen_Recording_1.gif)
+![Demo](https://github.com/tenninebt/vscode-koverage/blob/master/Capture.gif)
 
 ## Requirements
 

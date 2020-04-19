@@ -2,6 +2,7 @@
 	"name": "vscode-koverage",
 	"publisher": "tenninebt",
 	"displayName": "Koverage",
+	"repository": "https://github.com/tenninebt/vscode-koverage",
 	"description": "",
 	"version": "0.0.1",
 	"engines": {
