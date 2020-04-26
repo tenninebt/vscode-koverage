@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-
 import * as rx from 'rxjs';
+import * as vscodeLogging from '@vscode-logging/logger';
 
 export class ConfigStore {
 
@@ -10,7 +10,7 @@ export class ConfigStore {
     private _current: Config;
     public get current(): Config { return this._current; }
 
-    constructor(private outputChannel: vscode.OutputChannel) {
+    constructor(private readonly logger: vscodeLogging.IVSCodeExtLogger) {
 
         this.readConfig();
 
@@ -43,8 +43,8 @@ export class ConfigStore {
                 const sufficientCoverageThreshold = updatedRawConfig.inspect('sufficientCoverageThreshold')?.defaultValue as number;
                 rollbackConfig = new Config(coverageFileNames, coverageFilePaths, lowCoverageThreshold, sufficientCoverageThreshold);
             }
-            this.outputChannel.appendLine(`Invalid configuration : ${updatedConfig}`);
-            this.outputChannel.appendLine(`Last valid configuration will be used : ${rollbackConfig}`);
+            this.logger.warn(`Invalid configuration : ${updatedConfig}`);
+            this.logger.warn(`Last valid configuration will be used : ${rollbackConfig}`);
             updatedRawConfig.update(`coverageFileNames`, rollbackConfig.coverageFileNames);
             updatedRawConfig.update(`coverageFilePaths`, rollbackConfig.coverageFilePaths);
             updatedRawConfig.update(`lowCoverageThreshold`, rollbackConfig.lowCoverageThreshold);

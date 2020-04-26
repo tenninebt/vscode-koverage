@@ -1,18 +1,20 @@
-import * as vscode from 'vscode';
+import * as vscodeLogging from '@vscode-logging/logger';
 import * as iopath from 'path';
+import * as vscode from 'vscode';
+import { ConfigStore } from './config-store';
 import { CoverageParser } from './coverage-parser';
 import { FilesLoader } from './files-loader';
-import { ConfigStore } from './configStore';
+import { WorkspaceFolderCoverage } from './workspace-folder-coverage-file';
 
 export class FileCoverageDataProvider implements vscode.TreeDataProvider<CoverageNode>, vscode.Disposable {
-    
+
     private coverageWatcher: vscode.FileSystemWatcher;
 
     constructor(
         private readonly configStore: ConfigStore,
         private readonly coverageParser: CoverageParser,
         private readonly filesLoader: FilesLoader,
-        private readonly outputChannel: vscode.OutputChannel) {
+        private readonly logger: vscodeLogging.IVSCodeExtLogger) {
 
         if (configStore === null || configStore === undefined) {
             throw new Error('configStore must be defined');
@@ -30,25 +32,26 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     }
 
     listenToConfigChanges() {
-        this.configStore.subscribe(_ => this.refresh());
+        this.configStore.subscribe(_ => this.refresh('<ConfigChanged>'));
     }
 
     dispose() {
         this.coverageWatcher?.dispose();
     }
 
-    private listenToFileSystem(): void{
-        if(!vscode.workspace.rootPath) {
+    private listenToFileSystem(): void {
+        if (!vscode.workspace.workspaceFolders) {
             vscode.window.showInformationMessage('No file coverage in empty workspace');
             return;
         }
-        const searchPattern = iopath.join(vscode.workspace.rootPath, `**/{${this.configStore.current.coverageFilePaths}/**}`);
-        // const searchPattern = iopath.join(vscode.workspace.rootPath, `${this.configStore.coverageFilePaths}/**`);
-        this.outputChannel.appendLine(`createFileSystemWatcher(Pattern = ${searchPattern})`);
-        this.coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern);
-        this.coverageWatcher.onDidChange(() => this.refresh());
-        this.coverageWatcher.onDidCreate(() => this.refresh());
-        this.coverageWatcher.onDidDelete(() => this.refresh());
+        for (let folder in vscode.workspace.workspaceFolders) {
+            const searchPattern = iopath.join(folder, `**/{${this.configStore.current.coverageFilePaths}/**}`);
+            this.logger.debug(`createFileSystemWatcher(Pattern = ${searchPattern})`);
+            this.coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern);
+            this.coverageWatcher.onDidChange(() => this.refresh('<CoverageChanged>'));
+            this.coverageWatcher.onDidCreate(() => this.refresh('<CoverageCreated>'));
+            this.coverageWatcher.onDidDelete(() => this.refresh('<CoverageDeleted>'));
+        }
     }
 
     getTreeItem(element: CoverageNode): vscode.TreeItem {
@@ -56,11 +59,10 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     }
 
     getChildren(element?: CoverageNode): Thenable<CoverageNode[]> {
-        if (!vscode.workspace.rootPath) {
+        if (!vscode.workspace.workspaceFolders) {
             vscode.window.showInformationMessage('No file coverage in empty workspace');
             return Promise.resolve([]);
         }
-
         if (!element) {
             return this
                 .getIndexedCoverageData()
@@ -76,69 +78,73 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
         }
     }
 
-    private async getRawCoverageData(): Promise<[string, any][]> {
+    private async getRawCoverageData(): Promise<Set<WorkspaceFolderCoverage>> {
         let coverageData = await this.filesLoader
-            .findCoverageFiles()
-            .then(fileNames => this.filesLoader.loadDataFiles(fileNames))
-            .then(async files => Array.from(await this.coverageParser.filesToSections(files)));
+            .loadCoverageFiles()
+            .then(async files => await this.coverageParser.filesToSections(files));
         return coverageData;
     }
 
     private async getIndexedCoverageData(): Promise<Map<string, CoverageNode>> {
 
         let coverageData = await this.getRawCoverageData();
+
         let nodesMap: Map<string, CoverageNode> = new Map<string, CoverageNode>();
-        coverageData.forEach(([fullPath, coverageData]) => {
 
-            let pathSteps = fullPath.split('/');
-            let parentPath = "";
-            let path = "";
+        for (const workspaceFolderCoverage of coverageData) {
+            
+            for (const [codeFilePath, coverageData] of workspaceFolderCoverage.coverage) {
+                
+                let pathSteps = iopath.join(workspaceFolderCoverage.workspaceFolder.name, codeFilePath).split('/');
+                let parentPath = '';
+                let path = '';
 
-            for (let index = 0; index < pathSteps.length; index++) {
-                const step = pathSteps[index];
-                parentPath = path;
-                path = iopath.join(path, step);
+                for (let index = 0; index < pathSteps.length; index++) {
+                    const step = pathSteps[index];
+                    parentPath = path;
+                    path = iopath.join(path, step);
 
-                if (!nodesMap.has(parentPath)) {
-                    nodesMap.set(parentPath, new FolderCoverageNode(parentPath, parentPath, index, [], 
-                        FileCoverageDataProvider.getCoverageLevel(this.configStore)));
-                }
+                    if (!nodesMap.has(parentPath)) {
+                        nodesMap.set(parentPath, new FolderCoverageNode(parentPath, parentPath, index, [],
+                            FileCoverageDataProvider.getCoverageLevel(this.configStore)));
+                    }
 
-                const parentNode = nodesMap.get(parentPath);
-                if (parentNode instanceof FolderCoverageNode) {
-                    if (index === pathSteps.length - 1) {
-                        const node = new FileCoverageNode(path, step, index, FileCoverageDataProvider.getCoverageLevel(this.configStore), 
-                            coverageData.lines.found, coverageData.lines.hit);
-                        parentNode.children.push(node);
-                        nodesMap.set(path, node);
-                    } else {
-                        if (!nodesMap.has(path)) {
-                            const node = new FolderCoverageNode(path, step, index, [], FileCoverageDataProvider.getCoverageLevel(this.configStore));
+                    const parentNode = nodesMap.get(parentPath);
+                    if (parentNode instanceof FolderCoverageNode) {
+                        if (index === pathSteps.length - 1) {
+                            const node = new FileCoverageNode(path, step, index, FileCoverageDataProvider.getCoverageLevel(this.configStore),
+                                coverageData.lines.found, coverageData.lines.hit);
                             parentNode.children.push(node);
                             nodesMap.set(path, node);
+                        } else {
+                            if (!nodesMap.has(path)) {
+                                const node = new FolderCoverageNode(path, step, index, [], FileCoverageDataProvider.getCoverageLevel(this.configStore));
+                                parentNode.children.push(node);
+                                nodesMap.set(path, node);
+                            }
                         }
+                    } else {
+                        //Weird case !
                     }
-                } else {
-                    //Weird case !
                 }
             }
-        });
+        };
         return nodesMap;
     }
 
     private static getCoverageLevel(configStore: ConfigStore): (coveragePercent: number) => CoverageLevel {
         const coverageLevel = (coveragePercent: number) =>
             coveragePercent >= configStore.current.sufficientCoverageThreshold ? CoverageLevel.High :
-            coveragePercent >= configStore.current.lowCoverageThreshold ? CoverageLevel.Medium :
-            CoverageLevel.Low;
+                coveragePercent >= configStore.current.lowCoverageThreshold ? CoverageLevel.Medium :
+                    CoverageLevel.Low;
         return coverageLevel;
     }
 
     private _onDidChangeTreeData: vscode.EventEmitter<CoverageNode | undefined> = new vscode.EventEmitter<CoverageNode | undefined>();
     readonly onDidChangeTreeData: vscode.Event<CoverageNode | undefined> = this._onDidChangeTreeData.event;
 
-    refresh(): void {
-        this.outputChannel.appendLine("Refreshing...");
+    refresh(reason: string): void {
+        this.logger.debug(`Refreshing due to ${reason}...`);
         this._onDidChangeTreeData.fire();
     }
 }

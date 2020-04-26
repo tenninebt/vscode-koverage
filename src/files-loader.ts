@@ -1,63 +1,59 @@
-import { readFile } from "fs";
-import * as glob from "glob";
-import * as iopath from "path";
+import * as vscodeLogging from '@vscode-logging/logger';
 import * as fs from 'fs';
+import { readFile } from "fs";
+import * as iopath from "path";
 import * as vscode from 'vscode';
-import { workspace, WorkspaceFolder } from "vscode";
-import { ConfigStore } from "./configStore";
+import { ConfigStore } from "./config-store";
+import { WorkspaceFolderCoverageFile, WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file";
 
 export class FilesLoader {
 
-    constructor(private readonly configStore: ConfigStore) { }
+    constructor(private readonly configStore: ConfigStore, private readonly logger: vscodeLogging.IVSCodeExtLogger) { }
 
-    /**
-     * Finds all coverages files by xml and lcov and returns them
-     * Note: Includes developer override via "manualCoverageFilePaths"
-     */
-    public async findCoverageFiles(): Promise<Set<string>> {
-        const fileNames = this.configStore.current.coverageFileNames;
-        const filesPaths = this.configStore.current.coverageFilePaths;
-        const files = await this.findCoverageInWorkspace(filesPaths, fileNames);
-        if (!files.size) { throw new Error("Could not find a Coverage file!"); }
-        return files;
-    }
 
     /**
      * Takes files and converts to data strings for coverage consumption
      * @param files files that are to turned into data strings
      */
-    public async loadDataFiles(files: Set<string>): Promise<Map<string, string>> {
-        // Load the files and convert into data strings
-        const dataFiles = new Map<string, string>();
-        for (const file of files) {
-            dataFiles.set(file, await this.load(file));
+    public async loadCoverageFiles(): Promise<Set<WorkspaceFolderCoverageFiles>> {
+        const fileNames = this.configStore.current.coverageFileNames;
+        const filesPaths = this.configStore.current.coverageFilePaths;
+        const files = await this.loadCoverageInWorkspace(filesPaths, fileNames);
+        if (!files.size) { throw new Error("Could not find a Coverage file!"); }
+        return files;
+    }
+    private async loadCoverageInWorkspace(filesPaths: string[], fileNames: string[]): Promise<Set<WorkspaceFolderCoverageFiles>> {
+        let coverageFiles = new Map<string, WorkspaceFolderCoverageFiles>();
+        if (vscode.workspace.workspaceFolders) {
+            for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+                for (const filePath of filesPaths) {
+                    for (const fileName of fileNames) {
+
+                        const coverageFileFullPath = iopath.join(workspaceFolder.uri.path, filePath, fileName);
+
+                        if (fs.existsSync(coverageFileFullPath) && fs.lstatSync(coverageFileFullPath).isFile()) {
+
+                            if (!coverageFiles.has(workspaceFolder.uri.path)){
+                                coverageFiles.set(workspaceFolder.uri.path, new WorkspaceFolderCoverageFiles(workspaceFolder));
+                            }
+                            coverageFiles.get(workspaceFolder.uri.path)?.coverageFiles.add(new WorkspaceFolderCoverageFile(coverageFileFullPath, await this.load(coverageFileFullPath)));
+                        }
+                    }
+                }
+            }
+        } else {
+            this.logger.warn('Empty workspace');
         }
-        return dataFiles;
+
+        return new Set<WorkspaceFolderCoverageFiles>(coverageFiles.values());
     }
 
-    private load(path: string) {
+    private load(path: string): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             readFile(path, (err, data) => {
                 if (err) { return reject(err); }
                 return resolve(data.toString());
             });
         });
-    }
-
-    private async findCoverageInWorkspace(filesPaths: string[], fileNames: string[]) {
-        let files = new Set<string>();
-        if (vscode.workspace.rootPath) {
-            const rootPath = vscode.workspace.rootPath;
-            for (const filePath of filesPaths) {
-                for (const fileName of fileNames) {
-                    const fullRelativePath = iopath.join(rootPath, filePath, fileName);
-                    if (fs.existsSync(fullRelativePath) && fs.lstatSync(fullRelativePath).isFile()) {
-                        files = new Set([...files, fullRelativePath]);
-                    }
-                }
-            }
-        }
-
-        return files;
     }
 }

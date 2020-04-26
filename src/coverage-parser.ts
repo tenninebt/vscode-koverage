@@ -1,57 +1,59 @@
 import { parseContent as parseContentClover } from "@cvrg-report/clover-json";
+import * as vscodeLogging from '@vscode-logging/logger';
 import { parseContent as parseContentCobertura } from "cobertura-parse";
 import { parseContent as parseContentJacoco } from "jacoco-parse";
 import { Section, source } from "lcov-parse";
-import * as vscode from "vscode";
-import * as iopath from "path";
-
 import { CoverageFile, CoverageType } from "./coverage-file";
+import { WorkspaceFolderCoverage, WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file";
+
 
 export class CoverageParser {
-    private outputChannel: vscode.OutputChannel;
 
-    constructor(outputChannel: vscode.OutputChannel) {
-        this.outputChannel = outputChannel;
+    constructor(private readonly logger: vscodeLogging.IVSCodeExtLogger) {
     }
 
     /**
      * Extracts coverage sections of type xml and lcov
-     * @param files array of coverage files in string format
+     * @param workspaceFolders array of coverage files in string format
      */
-    public async filesToSections(files: Map<string, string>): Promise<Map<string, Section>> {
-        let coverages = new Map<string, Section>();
+    public async filesToSections(workspaceFolders: Set<WorkspaceFolderCoverageFiles>): Promise<Set<WorkspaceFolderCoverage>> {
+        let workspaceCoverage = new Set<WorkspaceFolderCoverage>();
 
-        for (const file of files) {
-            const fileName = file[0];
-            const fileContent = file[1];
+        for (const folder of workspaceFolders) {
 
-            // file is an array
-            let coverage = new Map<string, Section>();
+            let workspaceFolderCoverage = new Map<string, Section>();
 
-            // get coverage file type
-            const coverageFile = new CoverageFile(fileContent);
-            switch (coverageFile.type) {
-                case CoverageType.CLOVER:
-                    coverage = await this.xmlExtractClover(fileName, fileContent);
-                    break;
-                case CoverageType.JACOCO:
-                    coverage = await this.xmlExtractJacoco(fileName, fileContent);
-                    break;
-                case CoverageType.COBERTURA:
-                    coverage = await this.xmlExtractCobertura(fileName, fileContent);
-                    break;
-                case CoverageType.LCOV:
-                    coverage = await this.lcovExtract(fileName, fileContent);
-                    break;
-                default:
-                    break;
+            for (const file of folder.coverageFiles) {
+
+                // file is an array
+                let coverage: Map<string, Section> = new Map<string, Section>();
+
+                // get coverage file type
+                const coverageFile = new CoverageFile(file.content);
+                switch (coverageFile.type) {
+                    case CoverageType.CLOVER:
+                        coverage = await this.xmlExtractClover(file.path, file.content);
+                        break;
+                    case CoverageType.JACOCO:
+                        coverage = await this.xmlExtractJacoco(file.path, file.content);
+                        break;
+                    case CoverageType.COBERTURA:
+                        coverage = await this.xmlExtractCobertura(file.path, file.content);
+                        break;
+                    case CoverageType.LCOV:
+                        coverage = await this.lcovExtract(file.path, file.content);
+                        break;
+                    default:
+                        break;
+                }
+                // add new coverage map to existing coverages generated so far
+                workspaceFolderCoverage = new Map([...workspaceFolderCoverage, ...coverage]);
             }
 
-            // add new coverage map to existing coverages generated so far
-            coverages = new Map([...coverages, ...coverage]);
+            workspaceCoverage.add(new WorkspaceFolderCoverage(folder.workspaceFolder, workspaceFolderCoverage));
         }
 
-        return coverages;
+        return workspaceCoverage;
     }
 
     private async convertSectionsToMap(data: Section[]): Promise<Map<string, Section>> {
@@ -148,14 +150,8 @@ export class CoverageParser {
     private handleError(system: string, error: Error) {
         const message = error.message ? error.message : error;
         const stackTrace = error.stack;
-        this.outputChannel.appendLine(
-            `[${Date.now()}][coverageparser][${system}]: Error: ${message}`,
+        this.logger.error(
+            `[${Date.now()}][coverageparser][${system}]: Error: ${message}\n${stackTrace}`,
         );
-        if (stackTrace) {
-            this.outputChannel.appendLine(
-                `[${Date.now()}][coverageparser][${system}]: Stacktrace: ${stackTrace}`,
-            );
-        }
     }
-
 }

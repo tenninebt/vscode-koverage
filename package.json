@@ -109,6 +109,7 @@
 	"dependencies": {
 		"@cvrg-report/clover-json": "0.3.0",
 		"@reactivex/rxjs": "^6.5.5",
+		"@vscode-logging/logger": "^1.0.0",
 		"cobertura-parse": "github:vokal/cobertura-parse#53109a6",
 		"jacoco-parse": "2.0.1",
 		"lcov-parse": "1.0.0"
