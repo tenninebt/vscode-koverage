@@ -10,6 +10,8 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
     private coverageWatcher: vscode.FileSystemWatcher;
 
+    private readonly rootNodeKey:string = '';
+
     constructor(
         private readonly configStore: ConfigStore,
         private readonly coverageParser: CoverageParser,
@@ -45,7 +47,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             return;
         }
         for (let folder in vscode.workspace.workspaceFolders) {
-            const searchPattern = iopath.join(folder, `**/{${this.configStore.current.coverageFilePaths}/**}`);
+            const searchPattern = iopath.join(folder, `**${iopath.sep}{${this.configStore.current.coverageFilePaths}${iopath.sep}**}`);
             this.logger.debug(`createFileSystemWatcher(Pattern = ${searchPattern})`);
             this.coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern);
             this.coverageWatcher.onDidChange(() => this.refresh('<CoverageChanged>'));
@@ -67,11 +69,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             return this
                 .getIndexedCoverageData()
                 .then(indexedCoverageData => {
-                    for (let node of indexedCoverageData.values()) {
-                        if (node.depth === 0) {
-                            return node.children.sort((a, b) => a.path.localeCompare(b.path));
-                        }
-                    }
+                    return indexedCoverageData.get(this.rootNodeKey)?.children;
                 });
         } else {
             return Promise.resolve(element.children.sort((a, b) => a.path.localeCompare(b.path)));
@@ -87,57 +85,58 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
     private async getIndexedCoverageData(): Promise<Map<string, CoverageNode>> {
 
+        const coverageLevelThresholds = new CoverageLevelThresholds(this.configStore.current.sufficientCoverageThreshold, this.configStore.current.lowCoverageThreshold);
+
         let coverageData = await this.getRawCoverageData();
 
         let nodesMap: Map<string, CoverageNode> = new Map<string, CoverageNode>();
 
+        const rootNode = new FolderCoverageNode(this.rootNodeKey, this.rootNodeKey, [], coverageLevelThresholds);
+        nodesMap.set(this.rootNodeKey, rootNode);
+
         for (const workspaceFolderCoverage of coverageData) {
-            
+
+            const workspaceFolderNode = new FolderCoverageNode(workspaceFolderCoverage.workspaceFolder.uri.path, workspaceFolderCoverage.workspaceFolder.name, [],
+                coverageLevelThresholds);
+            rootNode.children.push(workspaceFolderNode);
+            nodesMap.set(workspaceFolderNode.label, workspaceFolderNode);
+
             for (const [codeFilePath, coverageData] of workspaceFolderCoverage.coverage) {
-                
-                let pathSteps = iopath.join(workspaceFolderCoverage.workspaceFolder.name, codeFilePath).split('/');
-                let parentPath = '';
-                let path = '';
+
+                let pathSteps = codeFilePath.split(iopath.sep);
+                let parentNodePath = workspaceFolderNode.label; //Path in the visual tree
+                let parentRelativeFilePath = ''; //Physical path relative to the workspace folder
 
                 for (let index = 0; index < pathSteps.length; index++) {
                     const step = pathSteps[index];
-                    parentPath = path;
-                    path = iopath.join(path, step);
+                    let relativeNodePath = iopath.join(parentNodePath, step);
+                    let relativeFilePath = iopath.join(parentRelativeFilePath, step);
+                    const absoluteFilePath = iopath.join(workspaceFolderCoverage.workspaceFolder.uri.path, relativeFilePath);
 
-                    if (!nodesMap.has(parentPath)) {
-                        nodesMap.set(parentPath, new FolderCoverageNode(parentPath, parentPath, index, [],
-                            FileCoverageDataProvider.getCoverageLevel(this.configStore)));
-                    }
-
-                    const parentNode = nodesMap.get(parentPath);
+                    const parentNode = nodesMap.get(parentNodePath);
                     if (parentNode instanceof FolderCoverageNode) {
-                        if (index === pathSteps.length - 1) {
-                            const node = new FileCoverageNode(path, step, index, FileCoverageDataProvider.getCoverageLevel(this.configStore),
-                                coverageData.lines.found, coverageData.lines.hit);
-                            parentNode.children.push(node);
-                            nodesMap.set(path, node);
-                        } else {
-                            if (!nodesMap.has(path)) {
-                                const node = new FolderCoverageNode(path, step, index, [], FileCoverageDataProvider.getCoverageLevel(this.configStore));
-                                parentNode.children.push(node);
-                                nodesMap.set(path, node);
+                        if (!nodesMap.has(relativeNodePath)) {
+                            let node: CoverageNode;
+                            if (index === pathSteps.length - 1) { //IsLeaf node
+                                node = new FileCoverageNode(absoluteFilePath, step, coverageLevelThresholds, 
+                                    coverageData.lines.found, coverageData.lines.hit);
+                            } else {
+                                node = new FolderCoverageNode(absoluteFilePath, step, [], coverageLevelThresholds);
                             }
+                            parentNode.children.push(node);
+                            nodesMap.set(relativeNodePath, node);
                         }
                     } else {
                         //Weird case !
+                        this.logger.warn(`Could not find a parent node with parentPath = ${parentNodePath}`);
                     }
+
+                    parentNodePath = relativeNodePath;
+                    parentRelativeFilePath = relativeFilePath;
                 }
             }
         };
         return nodesMap;
-    }
-
-    private static getCoverageLevel(configStore: ConfigStore): (coveragePercent: number) => CoverageLevel {
-        const coverageLevel = (coveragePercent: number) =>
-            coveragePercent >= configStore.current.sufficientCoverageThreshold ? CoverageLevel.High :
-                coveragePercent >= configStore.current.lowCoverageThreshold ? CoverageLevel.Medium :
-                    CoverageLevel.Low;
-        return coverageLevel;
     }
 
     private _onDidChangeTreeData: vscode.EventEmitter<CoverageNode | undefined> = new vscode.EventEmitter<CoverageNode | undefined>();
@@ -155,16 +154,21 @@ enum CoverageLevel {
     High = 'high'
 }
 
-export abstract class CoverageNode extends vscode.TreeItem {
+class CoverageLevelThresholds {
+    constructor(
+        public readonly sufficientCoverageThreshold: number,
+        public readonly lowCoverageThreshold: number
+    ) {
+    }
 
-    private coverageWatcher: vscode.FileSystemWatcher;
+}
+export abstract class CoverageNode extends vscode.TreeItem {
 
     constructor(
         public readonly path: string,
         public readonly label: string,
-        public readonly depth: number,
         public readonly children: CoverageNode[],
-        protected readonly getCoverageLevel: (coveragePercent: number) => CoverageLevel,
+        private readonly coverageLevelThresholds: CoverageLevelThresholds,
         collapsibleState: vscode.TreeItemCollapsibleState | undefined
     ) {
         super(label, collapsibleState);
@@ -195,12 +199,15 @@ export abstract class CoverageNode extends vscode.TreeItem {
     }
 
     private _getCoverageLevel(): CoverageLevel {
-        return this.getCoverageLevel(this.getCoveragePercent());
+        const coverageLevel =
+            this.getCoveragePercent() >= this.coverageLevelThresholds.sufficientCoverageThreshold ? CoverageLevel.High :
+                this.getCoveragePercent() >= this.coverageLevelThresholds.lowCoverageThreshold ? CoverageLevel.Medium : CoverageLevel.Low;
+        return coverageLevel;
     }
 
     get iconPath() {
-        const light = iopath.join(__filename, '..', '..', 'resources', 'light', `${this._getCoverageLevel().toString()}.svg`);
-        const dark = iopath.join(__filename, '..', '..', 'resources', 'dark', `${this._getCoverageLevel().toString()}.svg`);
+        const light = iopath.join(__dirname, '..', 'resources', 'light', `${this._getCoverageLevel().toString()}.svg`);
+        const dark = iopath.join(__dirname, '..', 'resources', 'dark', `${this._getCoverageLevel().toString()}.svg`);
         return {
             light: light,
             dark: dark
@@ -211,13 +218,12 @@ export abstract class CoverageNode extends vscode.TreeItem {
 class FolderCoverageNode extends CoverageNode {
 
     constructor(
-        public readonly path: string,
-        public readonly label: string,
-        public readonly depth: number,
-        public readonly children: CoverageNode[] = [],
-        public readonly getCoverageLevel: (coveragePercent: number) => CoverageLevel,
+        path: string,
+        label: string,
+        children: CoverageNode[] = [],
+        coverageLevelThresholds: CoverageLevelThresholds,
     ) {
-        super(path, label, depth, children, getCoverageLevel, vscode.TreeItemCollapsibleState.Collapsed);
+        super(path, label, children, coverageLevelThresholds, vscode.TreeItemCollapsibleState.Collapsed);
     }
 
     get totalLinesCount(): number {
@@ -236,21 +242,20 @@ class FolderCoverageNode extends CoverageNode {
 class FileCoverageNode extends CoverageNode {
 
     constructor(
-        public readonly path: string,
-        public readonly label: string,
-        public readonly depth: number,
-        public readonly getCoverageLevel: (coveragePercent: number) => CoverageLevel,
+        path: string,
+        label: string,
+        coverageLevelThresholds: CoverageLevelThresholds,
         public readonly totalLinesCount: number,
         public readonly coveredLinesCount: number,
     ) {
-        super(path, label, depth, [], getCoverageLevel, vscode.TreeItemCollapsibleState.None);
+        super(path, label, [], coverageLevelThresholds, vscode.TreeItemCollapsibleState.None);
     }
 
     get command(): vscode.Command {
         return {
             command: 'vscode.open',
             title: 'Open',
-            arguments: [vscode.Uri.file(iopath.join(vscode.workspace.rootPath || '', this.path))],
+            arguments: [vscode.Uri.file(this.path)],
         };
     }
 }
