@@ -81,7 +81,7 @@
 			"view/item/context": [
 				{
 					"command": "koverage.openFile",
-					"when": "view == koverage"
+					"when": "view == koverage && viewItem == FileCoverageNode"
 				}
 			]
 		}

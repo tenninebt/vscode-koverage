@@ -251,6 +251,10 @@ class FileCoverageNode extends CoverageNode {
         super(path, label, [], coverageLevelThresholds, vscode.TreeItemCollapsibleState.None);
     }
 
+    get contextValue() {
+        return FileCoverageNode.name;
+    }
+
     get command(): vscode.Command {
         return {
             command: 'vscode.open',
