@@ -19,7 +19,9 @@ export class FilesLoader {
         const fileNames = this.configStore.current.coverageFileNames;
         const filesPaths = this.configStore.current.coverageFilePaths;
         const files = await this.loadCoverageInWorkspace(filesPaths, fileNames);
-        if (!files.size) { throw new Error("Could not find a Coverage file!"); }
+        if (!files.size) { 
+            this.logger.warn('Could not find a Coverage file!');
+        }
         return files;
     }
     private async loadCoverageInWorkspace(filesPaths: string[], fileNames: string[]): Promise<Set<WorkspaceFolderCoverageFiles>> {
