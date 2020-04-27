@@ -41,8 +41,8 @@ export function activate(context: vscode.ExtensionContext) {
 	let refresh = vscode.commands.registerCommand('koverage.refresh', () => fileCoverageDataProvider.refresh('<RefreshCommand>'));
 	//TODO fix this command
 	let openFile = vscode.commands.registerCommand('koverage.openFile', (node: CoverageNode) => {
-		if (node.command) {
-			vscode.commands.executeCommand(node.command.command || '', node.command.arguments);
+		if (node.command && node.command.arguments) {
+			vscode.commands.executeCommand(node.command.command || '', ...node.command.arguments);
 		}
 	});
 
