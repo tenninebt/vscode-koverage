@@ -23,6 +23,10 @@ This extension contributes the following settings:
 
 ## Release Notes
 
+### 0.0.2
+
++ Add support to multi-folder workspaces
++ Bundle the extension using webpack
 
 ### 0.0.1
 

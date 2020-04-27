@@ -9,8 +9,7 @@
 		],
 		"sourceMap": true,
 		"rootDir": "src",
-        "strictNullChecks": true,
-        "moduleResolution": "node"
+        "strictNullChecks": true
 	},
 	"exclude": [
 		"node_modules",
