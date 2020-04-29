@@ -23,11 +23,11 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 0.0.2
+### 0.0.2-dev
 
 + Add support to multi-folder workspaces
 + Bundle the extension using webpack
 
-### 0.0.1
+### 0.0.1-dev
 
 Proof of concept, just playing around with vscode extension API trying to build something I needed in the process
