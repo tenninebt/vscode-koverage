@@ -1,9 +1,15 @@
-# Change Log
+# Changelog
 
 All notable changes to the "Koverage" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+<a name="0.0.2-dev"></a>
+## [0.0.2-dev](https://github.com/tenninebt/vscode-koverage/compare/0.0.1-dev...0.0.2-dev) (2020-04-29)
 
-- Initial release
+- Add support to multi-folder workspaces
+- Bundle the extension using webpack
+
+## 0.0.1-dev (2020-04-19)
+
+- Proof of concept, just playing around with vscode extension API trying to build something I needed in the process

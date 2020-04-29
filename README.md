@@ -6,8 +6,6 @@ This extension adds a tree view to the test view container. It shows the coverag
 
 ![Demo](https://raw.githubusercontent.com/tenninebt/vscode-koverage/master/Capture.gif)
 
-## Requirements
-
 ## Extension Settings
 
 This extension contributes the following settings:
@@ -19,15 +17,3 @@ This extension contributes the following settings:
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon
 
 ## Known Issues
-
-
-## Release Notes
-
-### 0.0.2-dev
-
-+ Add support to multi-folder workspaces
-+ Bundle the extension using webpack
-
-### 0.0.1-dev
-
-Proof of concept, just playing around with vscode extension API trying to build something I needed in the process
