@@ -11,12 +11,13 @@
 	"categories": [
 		"Other"
 	],
+	"icon": "resources/icon.png",
 	"activationEvents": [
 		"onView:koverage"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
-		"configuration": {
+		"configuration": {	
 			"title": "koverage",
 			"properties": {
 				"koverage.coverageFileNames": {
