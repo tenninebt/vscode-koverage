@@ -2,8 +2,9 @@
 	"name": "vscode-koverage",
 	"publisher": "tenninebt",
 	"displayName": "Koverage",
+	"keywords": ["coverage", "lcov", "jacoco"],
 	"repository": "https://github.com/tenninebt/vscode-koverage",
-	"description": "",
+	"description": "View the code coverage per folder/file in the test view",
 	"version": "0.0.2",
 	"engines": {
 		"vscode": "^1.44.0"
