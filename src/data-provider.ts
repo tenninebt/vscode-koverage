@@ -191,7 +191,7 @@ export abstract class CoverageNode extends vscode.TreeItem {
     }
 
     private formatCoverage(): string {
-        return this.getCoveragePercent().toPrecision(2) + '%';
+        return +this.getCoveragePercent().toFixed(1) + '%';
     }
 
     get resourceUri(): vscode.Uri {
