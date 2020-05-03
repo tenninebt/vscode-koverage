@@ -46,8 +46,8 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             vscode.window.showInformationMessage('No file coverage in empty workspace');
             return;
         }
-        for (let folder in vscode.workspace.workspaceFolders) {
-            const searchPattern = iopath.join(folder, `**${iopath.sep}{${this.configStore.current.coverageFilePaths}${iopath.sep}**}`);
+        for (let folder of vscode.workspace.workspaceFolders) {
+            const searchPattern = iopath.join(folder.uri.path, `**${iopath.sep}{${this.configStore.current.coverageFilePaths}${iopath.sep}**}`);
             this.logger.debug(`createFileSystemWatcher(Pattern = ${searchPattern})`);
             this.coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern);
             this.coverageWatcher.onDidChange(() => this.refresh('<CoverageChanged>'));
