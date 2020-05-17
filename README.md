@@ -1,4 +1,4 @@
-# koverage README
+# Koverage
 
 This extension adds a tree view to the test view container. It shows the coverage per file/folder.
 
@@ -23,9 +23,8 @@ To test the pre-release, you have 2 solutions :
 This extension contributes the following settings:
 
 * `koverage.coverageFileNames`: coverage file names to look for, default: ["lcov.info", "cov.xml", "coverage.xml","jacoco.xml"]
-* `koverage.coverageFilePaths`: coverage file names to look for, default: ["lcov.info", "cov.xml", "coverage.xml","jacoco.xml"]
+* `koverage.coverageFilePaths`: coverage file names to look for, default: ["coverage"]
 * `koverage.lowCoverageThreshold`: Percentage under which, the coverage is considered too low (Renders as Error icon)
 * `koverage.sufficientCoverageThreshold`: Percentage above which, the coverage is considered sufficient (Renders as Success icon)
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon
 
-## Known Issues
