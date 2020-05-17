@@ -102,7 +102,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             nodesMap.set(workspaceFolderNode.label, workspaceFolderNode);
 
             for (const [codeFilePath, coverageData] of workspaceFolderCoverage.coverage) {
-
+                
                 let pathSteps = codeFilePath.split(iopath.sep);
                 let parentNodePath = workspaceFolderNode.label; //Path in the visual tree
                 let parentRelativeFilePath = ''; //Physical path relative to the workspace folder
@@ -118,8 +118,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
                         if (!nodesMap.has(relativeNodePath)) {
                             let node: CoverageNode;
                             if (index === pathSteps.length - 1) { //IsLeaf node
-                                node = new FileCoverageNode(absoluteFilePath, step, coverageLevelThresholds, 
-                                    coverageData.lines.found, coverageData.lines.hit);
+                                node = new FileCoverageNode(absoluteFilePath, step, coverageLevelThresholds, coverageData.lines.found, coverageData.lines.hit);
                             } else {
                                 node = new FolderCoverageNode(absoluteFilePath, step, [], coverageLevelThresholds);
                             }
@@ -195,7 +194,7 @@ export abstract class CoverageNode extends vscode.TreeItem {
     }
 
     get resourceUri(): vscode.Uri {
-        return vscode.Uri.file(iopath.join('./', this.path));
+        return vscode.Uri.file(this.path);
     }
 
     private _getCoverageLevel(): CoverageLevel {
