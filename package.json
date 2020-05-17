@@ -5,7 +5,7 @@
 	"keywords": ["coverage", "lcov", "jacoco"],
 	"repository": "https://github.com/tenninebt/vscode-koverage",
 	"description": "View the code coverage per folder/file in the test view",
-	"version": "0.0.2",
+	"version": "0.0.3-dev",
 	"engines": {
 		"vscode": "^1.44.0"
 	},
