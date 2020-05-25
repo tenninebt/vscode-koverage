@@ -12,7 +12,7 @@ To test the pre-release, you have 2 solutions :
 - Locate the .vsix file you downloaded and click "Open".
 
 2. Using terminal
-- code --install-extension vscode-koverage-0.0.3-dev.vsix
+- code --install-extension vscode-koverage-0.0.4-dev.vsix
 
 ## Features
 
