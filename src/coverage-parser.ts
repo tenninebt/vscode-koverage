@@ -58,14 +58,25 @@ export class CoverageParser {
         return workspaceCoverage;
     }
 
+    private recomputeStats(data: any[] ) {
+        data.forEach((section) => {
+            if(!section.hit || !section.found){
+                section.lines.hit = section.lines.details.reduce((a, b) => a + (b.hit > 0 ? 1 : 0), 0);
+                section.lines.found = section.lines.details.length;
+            }
+        });
+    }
+
     private async convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, data: Section[]): Promise<Map<string, Section>> {
         const sections = new Map<string, Section>();
         const addToSectionsMap = async (section: { title: string; file: string; }) => {
+            this.recomputeStats(data);
             let filePath = section.file;
             if(iopath.isAbsolute(section.file)){
                 //Convert to a path relative to the workspace root
                 filePath = filePath.replace(workspaceFolder.uri.path, "");
             }
+            
             sections.set(filePath, section);
         };
 
@@ -74,6 +85,7 @@ export class CoverageParser {
         await Promise.all(addPromises);
         return sections;
     }
+
 
     private xmlExtractCobertura(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string) {
         return new Promise<Map<string, Section>>((resolve, reject) => {
