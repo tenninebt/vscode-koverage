@@ -28,3 +28,5 @@ This extension contributes the following settings:
 * `koverage.sufficientCoverageThreshold`: Percentage above which, the coverage is considered sufficient (Renders as Success icon)
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon
 
+## Licencing
+- The coverage files parsing is a mainly from https://github.com/ryanluker/vscode-coverage-gutters by ryanluker. Thanks to him for the amazing extension he built and the very useful code that helped me build this extensions. Until proper licencing is added to the copied code, this note shall remain.
