@@ -29,4 +29,9 @@ This extension contributes the following settings:
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon
 
 ## Licencing
-- The coverage files parsing is a mainly from https://github.com/ryanluker/vscode-coverage-gutters by ryanluker. Thanks to him for the amazing extension he built and the very useful code that helped me build this extensions. Until proper licencing is added to the copied code, this note shall remain.
+
+The coverage files parsing is a mainly from https://github.com/ryanluker/vscode-coverage-gutters by ryanluker. Thanks to him for the amazing extension he built and the very useful code that helped me build this extensions. Until proper licencing is added to the copied code, this note shall remain. The files concerned by this note (Copied source with modifications or using snippets) : 
+- coverage-file.ts
+- coverage-parser.ts
+- data-provider.ts 
+- files-loader.ts
