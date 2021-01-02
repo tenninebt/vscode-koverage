@@ -23,7 +23,7 @@ To test the pre-release from [here](https://github.com/tenninebt/vscode-koverage
 This extension contributes the following settings:
 
 * `koverage.coverageFileNames`: coverage file names to look for, default: ["lcov.info", "cov.xml", "coverage.xml","jacoco.xml"]
-* `koverage.coverageFilePaths`: coverage file names to look for, default: ["coverage"]
+* `koverage.coverageFilePaths`: coverage paths where coverage files are located, default: ["coverage"]
 * `koverage.lowCoverageThreshold`: Percentage under which, the coverage is considered too low (Renders as Error icon)
 * `koverage.sufficientCoverageThreshold`: Percentage above which, the coverage is considered sufficient (Renders as Success icon)
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon
