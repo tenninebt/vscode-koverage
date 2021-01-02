@@ -4,7 +4,7 @@ This extension adds a tree view to the test view container. It shows the coverag
 
 ## Installation
 
-To test the pre-release, you have 2 solutions :
+To test the pre-release from [here](https://github.com/tenninebt/vscode-koverage/releases), you have 2 solutions :
 
 1. Install using the UI
 - Open Visual Studio Code and select View->Extensions from the menu to display the Extensions pane.
