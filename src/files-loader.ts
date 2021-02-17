@@ -31,7 +31,7 @@ export class FilesLoader {
                 for (const filePath of filesPaths) {
                     for (const fileName of fileNames) {
 
-                        const coverageFileFullPath = iopath.join(workspaceFolder.uri.path, filePath, fileName);
+                        const coverageFileFullPath = iopath.join(workspaceFolder.uri.fsPath, filePath, fileName);
 
                         if (fs.existsSync(coverageFileFullPath) && fs.lstatSync(coverageFileFullPath).isFile()) {
 
