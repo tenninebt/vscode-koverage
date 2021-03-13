@@ -47,7 +47,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             return;
         }
         for (let folder of vscode.workspace.workspaceFolders) {
-            const searchPattern = iopath.join(folder.uri.path, `**${iopath.sep}{${this.configStore.current.coverageFilePaths}${iopath.sep}**}`);
+            const searchPattern = iopath.join(folder.uri.fsPath, `**${iopath.sep}{${this.configStore.current.coverageFilePaths}${iopath.sep}**}`);
             this.logger.debug(`createFileSystemWatcher(Pattern = ${searchPattern})`);
             this.coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern);
             this.coverageWatcher.onDidChange(() => this.refresh('<CoverageChanged>'));
@@ -96,7 +96,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
         for (const workspaceFolderCoverage of coverageData) {
 
-            const workspaceFolderNode = new FolderCoverageNode(workspaceFolderCoverage.workspaceFolder.uri.path, workspaceFolderCoverage.workspaceFolder.name, [],
+            const workspaceFolderNode = new FolderCoverageNode(workspaceFolderCoverage.workspaceFolder.uri.fsPath, workspaceFolderCoverage.workspaceFolder.name, [],
                 coverageLevelThresholds);
             rootNode.children.push(workspaceFolderNode);
             nodesMap.set(workspaceFolderNode.label, workspaceFolderNode);
@@ -111,7 +111,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
                     const step = pathSteps[index];
                     let relativeNodePath = iopath.join(parentNodePath, step);
                     let relativeFilePath = iopath.join(parentRelativeFilePath, step);
-                    const absoluteFilePath = iopath.join(workspaceFolderCoverage.workspaceFolder.uri.path, relativeFilePath);
+                    const absoluteFilePath = iopath.join(workspaceFolderCoverage.workspaceFolder.uri.fsPath, relativeFilePath);
 
                     const parentNode = nodesMap.get(parentNodePath);
                     if (parentNode instanceof FolderCoverageNode) {

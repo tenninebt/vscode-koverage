@@ -74,7 +74,7 @@ export class CoverageParser {
             let filePath = section.file;
             if(iopath.isAbsolute(section.file)){
                 //Convert to a path relative to the workspace root
-                filePath = filePath.replace(workspaceFolder.uri.path, "");
+                filePath = filePath.replace(workspaceFolder.uri.fsPath, "");
             }
             
             sections.set(filePath, section);

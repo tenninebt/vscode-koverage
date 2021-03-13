@@ -35,10 +35,10 @@ export class FilesLoader {
 
                         if (fs.existsSync(coverageFileFullPath) && fs.lstatSync(coverageFileFullPath).isFile()) {
 
-                            if (!coverageFiles.has(workspaceFolder.uri.path)){
-                                coverageFiles.set(workspaceFolder.uri.path, new WorkspaceFolderCoverageFiles(workspaceFolder));
+                            if (!coverageFiles.has(workspaceFolder.uri.fsPath)){
+                                coverageFiles.set(workspaceFolder.uri.fsPath, new WorkspaceFolderCoverageFiles(workspaceFolder));
                             }
-                            coverageFiles.get(workspaceFolder.uri.path)?.coverageFiles.add(new WorkspaceFolderCoverageFile(coverageFileFullPath, await this.load(coverageFileFullPath)));
+                            coverageFiles.get(workspaceFolder.uri.fsPath)?.coverageFiles.add(new WorkspaceFolderCoverageFile(coverageFileFullPath, await this.load(coverageFileFullPath)));
                         }
                     }
                 }
