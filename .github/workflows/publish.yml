@@ -19,13 +19,12 @@ jobs:
         with:
           node-version: 8
       - run: npm install
-      - run: vsce package
       - name: Publish to Open VSX Registry
         uses: HaaLeo/publish-vscode-extension@v0
         id: publishToOpenVSX
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
-      - name: Publish to VSCode Marketplace
+      - name: Publish to VS Code Marketplace
         uses: HaaLeo/publish-vscode-extension@v0
         with:
           pat: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
