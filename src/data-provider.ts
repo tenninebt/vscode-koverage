@@ -174,7 +174,7 @@ export abstract class CoverageNode extends vscode.TreeItem {
     }
 
     private getCoveragePercent(): number {
-        return this.coveredLinesCount / this.totalLinesCount * 100;
+        return this.totalLinesCount === 0 ? 100 : this.coveredLinesCount / this.totalLinesCount * 100;
     }
 
     abstract get totalLinesCount(): number;
