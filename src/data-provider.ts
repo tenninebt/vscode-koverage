@@ -173,7 +173,7 @@ export abstract class CoverageNode extends vscode.TreeItem {
         super(label, collapsibleState);
     }
 
-    public getCoveragePercent(): number {
+    private getCoveragePercent(): number {
         return this.coveredLinesCount / this.totalLinesCount * 100;
     }
 
@@ -181,10 +181,12 @@ export abstract class CoverageNode extends vscode.TreeItem {
 
     abstract get coveredLinesCount(): number;
 
+    //@ts-ignore Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
     get tooltip(): string {
         return `${this.label}: ${this.formatCoverage()}`;
     }
 
+    //@ts-ignore Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
     get description(): string {
         return this.formatCoverage();
     }
@@ -193,20 +195,22 @@ export abstract class CoverageNode extends vscode.TreeItem {
         return +this.getCoveragePercent().toFixed(1) + '%';
     }
 
+    //@ts-ignore Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
     get resourceUri(): vscode.Uri {
         return vscode.Uri.file(this.path);
     }
 
-    private _getCoverageLevel(): CoverageLevel {
+    private getCoverageLevel(): CoverageLevel {
         const coverageLevel =
             this.getCoveragePercent() >= this.coverageLevelThresholds.sufficientCoverageThreshold ? CoverageLevel.High :
                 this.getCoveragePercent() >= this.coverageLevelThresholds.lowCoverageThreshold ? CoverageLevel.Medium : CoverageLevel.Low;
         return coverageLevel;
     }
 
+    //@ts-ignore Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
     get iconPath() {
-        const light = iopath.join(__dirname, '..', 'resources', 'light', `${this._getCoverageLevel().toString()}.svg`);
-        const dark = iopath.join(__dirname, '..', 'resources', 'dark', `${this._getCoverageLevel().toString()}.svg`);
+        const light = iopath.join(__dirname, '..', 'resources', 'light', `${this.getCoverageLevel().toString()}.svg`);
+        const dark = iopath.join(__dirname, '..', 'resources', 'dark', `${this.getCoverageLevel().toString()}.svg`);
         return {
             light: light,
             dark: dark
@@ -248,14 +252,8 @@ class FileCoverageNode extends CoverageNode {
         public readonly coveredLinesCount: number,
     ) {
         super(path, label, [], coverageLevelThresholds, vscode.TreeItemCollapsibleState.None);
-    }
-
-    get contextValue() {
-        return FileCoverageNode.name;
-    }
-
-    get command(): vscode.Command {
-        return {
+        this.contextValue = FileCoverageNode.name;
+        this.command = {
             command: 'vscode.open',
             title: 'Open',
             arguments: [vscode.Uri.file(this.path)],
