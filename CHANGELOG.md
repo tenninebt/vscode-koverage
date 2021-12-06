@@ -4,7 +4,10 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.0.5-beta](https://github.com/tenninebt/vscode-koverage/compare/0.0.4-dev...0.0.5-beta) (2021-03-13)
+## [0.0.6](https://github.com/tenninebt/vscode-koverage/compare/0.0.5-dev...0.0.6) (2021-12-06)
+- Remove the beta from the version number as it is not supported my VSCode Market place
+
+## [0.0.5-beta](https://github.com/tenninebt/vscode-koverage/compare/0.0.4-dev...0.0.5-beta) (2021-12-06)
 - Bugfix [#9](https://github.com/tenninebt/vscode-koverage/pull/9): Wrong file path for open command (Windows)
 - Bugfix [#8](https://github.com/tenninebt/vscode-koverage/issues/8): Files with NaN% show up as incomplete
 
