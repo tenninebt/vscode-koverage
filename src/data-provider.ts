@@ -3,6 +3,7 @@ import * as iopath from 'path';
 import * as vscode from 'vscode';
 import { ConfigStore } from './config-store';
 import { CoverageParser } from './coverage-parser';
+import { CoverageSection } from "./coverage-section";
 import { FilesLoader } from './files-loader';
 import { WorkspaceFolderCoverage } from './workspace-folder-coverage-file';
 
@@ -89,6 +90,8 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
         let coverageData = await this.getRawCoverageData();
 
+        coverageData = await this.postProcessPaths(coverageData);
+
         let nodesMap: Map<string, CoverageNode> = new Map<string, CoverageNode>();
 
         const rootNode = new FolderCoverageNode(this.rootNodeKey, this.rootNodeKey, [], coverageLevelThresholds);
@@ -136,6 +139,28 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             }
         };
         return nodesMap;
+    }
+
+    private async postProcessPaths(coverageData: Set<WorkspaceFolderCoverage>): Promise<Set<WorkspaceFolderCoverage>> {
+        const workspaceFiles = await vscode.workspace.findFiles("**/*");
+        return new Set([...coverageData].map(
+            (folderCoverage: WorkspaceFolderCoverage) => {
+                const folderCoverageData = new Map<string, CoverageSection>();
+                folderCoverage.coverage.forEach((coverageSection: CoverageSection, key: string) => {
+                    let matches = workspaceFiles.filter((file) => file.fsPath.endsWith(coverageSection.file));
+                    if(matches.length === 1) {
+                        let matchedPath = matches[0].fsPath.replace(folderCoverage.workspaceFolder.uri.fsPath, "");
+                        if(coverageSection.file !== matchedPath) {
+                            this.logger.debug(`Replacing coverage section path ${coverageSection.file} by ${matchedPath}`);
+                            coverageSection.file = matchedPath;
+                        }
+                    } else {
+                        this.logger.warn(`${coverageSection.file} did not have expected number of matches : ${matches.length}`);
+                    }
+                    folderCoverageData.set(coverageSection.file, coverageSection);
+                });
+                return new WorkspaceFolderCoverage(folderCoverage.workspaceFolder, folderCoverageData);
+        }));
     }
 
     private _onDidChangeTreeData: vscode.EventEmitter<CoverageNode | undefined> = new vscode.EventEmitter<CoverageNode | undefined>();

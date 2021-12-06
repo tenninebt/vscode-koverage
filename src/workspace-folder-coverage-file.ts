@@ -1,4 +1,4 @@
-import { Section } from "lcov-parse";
+import { CoverageSection } from "./coverage-section";
 import * as vscode from 'vscode';
 
 export class WorkspaceFolderCoverageFiles {
@@ -11,5 +11,5 @@ export class WorkspaceFolderCoverageFile {
 }
 
 export class WorkspaceFolderCoverage {
-    constructor(public readonly workspaceFolder: vscode.WorkspaceFolder, public readonly coverage: Map<string, Section>) {}
+    constructor(public readonly workspaceFolder: vscode.WorkspaceFolder, public readonly coverage: Map<string, CoverageSection>) {}
 }

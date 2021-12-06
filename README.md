@@ -2,18 +2,6 @@
 
 This extension adds a tree view to the test view container. It shows the coverage per file/folder.
 
-## Installation
-
-To test the pre-release from [here](https://github.com/tenninebt/vscode-koverage/releases), you have 2 solutions :
-
-1. Install using the UI
-- Open Visual Studio Code and select View->Extensions from the menu to display the Extensions pane.
-- Click the ... at the top-right corner of the Extensions pane and select "Install from VSIX..." on the menu that appears.
-- Locate the .vsix file you downloaded and click "Open".
-
-2. Using terminal
-- code --install-extension vscode-koverage-0.0.4-dev.vsix
-
 ## Features
 
 ![Demo](https://raw.githubusercontent.com/tenninebt/vscode-koverage/master/Capture.gif)
@@ -35,3 +23,18 @@ The coverage files parsing is a mainly from https://github.com/ryanluker/vscode-
 - coverage-parser.ts
 - data-provider.ts 
 - files-loader.ts
+
+## Installation
+
+- Use the Visual Studio Market Place or Open-vsx.org.
+
+- Download the latest release from https://github.com/tenninebt/vscode-koverage/releases/latest, then, to manually install it, you have 2 solutions :
+
+1. Install using the UI
+- Open Visual Studio Code and select View->Extensions from the menu to display the Extensions pane.
+- Click the ... at the top-right corner of the Extensions pane and select "Install from VSIX..." on the menu that appears.
+- Locate the .vsix file you downloaded and click "Open".
+
+2. Using terminal
+- code --install-extension vscode-koverage-0.0.4-dev.vsix
+

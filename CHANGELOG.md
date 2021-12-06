@@ -4,6 +4,10 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.0.5-beta](https://github.com/tenninebt/vscode-koverage/compare/0.0.4-dev...0.0.5-beta) (2021-03-13)
+- Bugfix [#9](https://github.com/tenninebt/vscode-koverage/pull/9): Wrong file path for open command (Windows)
+- Bugfix [#8](https://github.com/tenninebt/vscode-koverage/issues/8): Files with NaN% show up as incomplete
+
 ## [0.0.4-dev](https://github.com/tenninebt/vscode-koverage/compare/0.0.3-dev...0.0.4-dev) (2020-05-17)
 
 - Bugfix [#3](https://github.com/tenninebt/vscode-koverage/issues/3): Handle lcov with missing LH and LF 

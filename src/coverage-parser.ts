@@ -3,6 +3,7 @@ import * as vscodeLogging from '@vscode-logging/logger';
 import { parseContent as parseContentCobertura } from "cobertura-parse";
 import { parseContent as parseContentJacoco } from "jacoco-parse";
 import { Section, source } from "lcov-parse";
+import { CoverageSection } from "./coverage-section";
 import * as iopath from 'path';
 import * as vscode from 'vscode';
 import { CoverageFile, CoverageType } from "./coverage-file";
