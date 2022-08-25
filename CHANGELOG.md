@@ -4,6 +4,9 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.0.7](https://github.com/tenninebt/vscode-koverage/compare/0.0.6...0.0.7) (2022-08-25)
+- Fix critical vulnerabilities
+
 ## [0.0.6](https://github.com/tenninebt/vscode-koverage/compare/0.0.5-dev...0.0.6) (2021-12-06)
 - Remove the beta from the version number as it is not supported my VSCode Market place
 
