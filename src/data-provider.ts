@@ -168,7 +168,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
     refresh(reason: string): void {
         this.logger.debug(`Refreshing due to ${reason}...`);
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 }
 
