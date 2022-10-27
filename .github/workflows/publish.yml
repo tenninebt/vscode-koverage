@@ -4,9 +4,9 @@ name: Publish
 
 # Controls when the action will run. 
 on:
-  push:
-    tags:
-      - "*"
+  # push:
+  #   tags:
+  #     - "*"
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
@@ -30,3 +30,14 @@ jobs:
         id: publishToOpenVSX
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
+      - name: Create Tag
+        uses: Klemensas/action-autotag@stable
+        with:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            ${{ steps.publishToOpenVSX.outputs.vsixPath }}
+        id: "automatic_releases"
