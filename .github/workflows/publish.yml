@@ -34,11 +34,11 @@ jobs:
         uses: Klemensas/action-autotag@stable
         with:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          changelog_structure: ""
+          changelog_structure: " "
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          automatic_release_tag: "${{ steps.previous_step.outputs.version }}"
           prerelease: false
           files: |
             ${{ steps.publishToOpenVSX.outputs.vsixPath }}
