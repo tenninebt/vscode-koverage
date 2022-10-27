@@ -75,9 +75,13 @@ export class CoverageParser {
             let filePath = section.file;
             if(iopath.isAbsolute(section.file)){
                 //Convert to a path relative to the workspace root
-                filePath = filePath.replace(workspaceFolder.uri.fsPath, "");
+                if (filePath.toLowerCase().startsWith(workspaceFolder.uri.fsPath.toLowerCase()))
+                {
+                    filePath = filePath.substring(workspaceFolder.uri.fsPath.length);
+                }
+                section.file = filePath;
             }
-            
+
             sections.set(filePath, section);
         };
 
