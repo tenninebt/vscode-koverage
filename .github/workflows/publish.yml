@@ -41,7 +41,7 @@ jobs:
       - name: "Package"
         run: vsce package --out ${{ steps.set_vsixPath.outputs.vsixPath }}
       - name: "Publish to VSCode Marketplace"
-        run: vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --package-path "${{ steps.set_vsixPath.outputs.vsixPath }}"
+        run: vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --packagePath "${{ steps.set_vsixPath.outputs.vsixPath }}"
       - name: "Publish to Open-VSX"
         run: npx ovsx publish "${{ steps.set_vsixPath.outputs.vsixPath }}" --pat ${{ secrets.OPEN_VSX_TOKEN }}
       - name: "Create Tag"
@@ -49,7 +49,7 @@ jobs:
         run: |
           git tag --annotate "v${{ steps.parse_packageJson.outputs.version }}" --message "${{ steps.parse_packageJson.outputs.name }}"
           git push origin --tags
-          echo "::set-output name=tag::${{ steps.parse_packageJson.outputs.version }}"
+          echo "::set-output name=tag::v${{ steps.parse_packageJson.outputs.version }}"
       - name: "Create release"
         uses: "marvinpinto/action-automatic-releases@latest"
         with:
