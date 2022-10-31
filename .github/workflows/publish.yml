@@ -1,45 +1,59 @@
-# This is a basic workflow to help you get started with Actions
-
 name: Publish
 
-# Controls when the action will run. 
 on:
   # push:
   #   tags:
   #     - "*"
-  # Allows you to run this workflow manually from the Actions tab
+  # Allows to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  deploy:
+  Release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v1
         with:
           node-version: 18
-      - run: npm install
-      - name: Publish to VS Code Marketplace
-        uses: HaaLeo/publish-vscode-extension@v1
-        with:
-          pat: ${{ secrets.VSCODE_MARKETPLACE_TOKEN }}
-          registryUrl: https://marketplace.visualstudio.com
-          extensionFile: ${{ steps.publishToOpenVSX.outputs.vsixPath }}
-      - name: Publish to Open VSX Registry
-        uses: HaaLeo/publish-vscode-extension@v1
-        id: publishToOpenVSX
-        with:
-          pat: ${{ secrets.OPEN_VSX_TOKEN }}
-      - name: Create Tag
-        uses: Klemensas/action-autotag@stable
-        with:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          changelog_structure: " "
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - name: "Install dependencies"
+        run: |
+          npm install
+          npm install -g vsce
+          npm install -g ovsx
+      - name: "Read Package.json"
+        id: read_packageJson
+        run: |
+          content=`cat ./package.json`
+          # the following lines are only required for multi line json
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          # end of optional handling for multi line json
+          echo "::set-output name=packageJson::$content"
+      - name: "Parse Package.json"
+        id: parse_packageJson
+        run: |
+          echo "::set-output name=name::${{ fromJson(steps.read_packageJson.outputs.packageJson).name }}"
+          echo "::set-output name=version::${{ fromJson(steps.read_packageJson.outputs.packageJson).version }}"
+      - name: "Set vsixPath"
+        id: set_vsixPath
+        run: echo "::set-output name=vsixPath::${{ steps.parse_packageJson.outputs.name }}-${{ steps.parse_packageJson.outputs.version }}.vsix"
+      - name: "Package"
+        run: vsce package --out ${{ steps.set_vsixPath.outputs.vsixPath }}
+      - name: "Publish to VSCode Marketplace"
+        run: vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --package-path "${{ steps.set_vsixPath.outputs.vsixPath }}"
+      - name: "Publish to Open-VSX"
+        run: npx ovsx publish "${{ steps.set_vsixPath.outputs.vsixPath }}" --pat ${{ secrets.OPEN_VSX_TOKEN }}
+      - name: "Create Tag"
+        id: create_tag
+        run: |
+          git tag --annotate "v${{ steps.parse_packageJson.outputs.version }}" --message "${{ steps.parse_packageJson.outputs.name }}"
+          git push origin --tags
+          echo "::set-output name=tag::${{ steps.parse_packageJson.outputs.version }}"
+      - name: "Create release"
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "${{ steps.previous_step.outputs.version }}"
+          automatic_release_tag: ${{ steps.create_tag.outputs.tag }}
           prerelease: false
-          files: |
-            ${{ steps.publishToOpenVSX.outputs.vsixPath }}
-        id: "automatic_releases"
+          files: "${{ steps.set_vsixPath.outputs.vsixPath }}"
