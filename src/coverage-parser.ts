@@ -3,7 +3,6 @@ import * as vscodeLogging from '@vscode-logging/logger';
 import { parseContent as parseContentCobertura } from "cobertura-parse";
 import { parseContent as parseContentJacoco } from "jacoco-parse";
 import { Section, source } from "lcov-parse";
-import { CoverageSection } from "./coverage-section";
 import * as iopath from 'path';
 import * as vscode from 'vscode';
 import { CoverageFile, CoverageType } from "./coverage-file";
@@ -68,21 +67,30 @@ export class CoverageParser {
         });
     }
 
-    private async convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, data: Section[]): Promise<Map<string, Section>> {
+    private async convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, sourceFile: string, data: Section[]): Promise<Map<string, Section>> {
         const sections = new Map<string, Section>();
         const addToSectionsMap = async (section: { title: string; file: string; }) => {
-            this.recomputeStats(data);
-            let filePath = section.file;
-            if(iopath.isAbsolute(section.file)){
-                //Convert to a path relative to the workspace root
-                if (filePath.toLowerCase().startsWith(workspaceFolder.uri.fsPath.toLowerCase()))
-                {
-                    filePath = filePath.substring(workspaceFolder.uri.fsPath.length);
+            try {
+                if(!section.file) {
+                    this.logger.warn(`Invalid section in the coverage file: ${sourceFile}`);
+                    return;
                 }
-                section.file = filePath;
-            }
+                this.recomputeStats(data);
+                let filePath = section.file;
+                if (iopath.isAbsolute(filePath)) {
+                    //Convert to a path relative to the workspace root
+                    if (filePath.toLowerCase().startsWith(workspaceFolder.uri.fsPath.toLowerCase())) {
+                        filePath = filePath.substring(workspaceFolder.uri.fsPath.length);
+                    }
+                    section.file = filePath;
+                }
 
-            sections.set(filePath, section);
+                sections.set(filePath, section);
+
+            } catch (err) {
+                err.message = `Invalid coverage file: ${sourceFile}`;
+                this.handleError("lcov-parse", err);
+            }
         };
 
         // convert the array of sections into an unique map
@@ -105,7 +113,7 @@ export class CoverageParser {
             try {
                 parseContentCobertura(xmlFile, async (err: any, data: any[]) => {
                     checkError(err);
-                    const sections = await this.convertSectionsToMap(workspaceFolder, data);
+                    const sections = await this.convertSectionsToMap(workspaceFolder, filename, data);
                     return resolve(sections);
                 }, true);
             } catch (error) {
@@ -127,7 +135,7 @@ export class CoverageParser {
             try {
                 parseContentJacoco(xmlFile, async (err: any, data: any[]) => {
                     checkError(err);
-                    const sections = await this.convertSectionsToMap(workspaceFolder, data);
+                    const sections = await this.convertSectionsToMap(workspaceFolder, filename, data);
                     return resolve(sections);
                 });
             } catch (error) {
@@ -139,7 +147,7 @@ export class CoverageParser {
     private async xmlExtractClover(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string) {
         try {
             const data = await parseContentClover(xmlFile);
-            const sections = await this.convertSectionsToMap(workspaceFolder, data);
+            const sections = await this.convertSectionsToMap(workspaceFolder, filename, data);
             return sections;
         } catch (error) {
             error.message = `filename: ${filename} ${error.message}`;
@@ -161,7 +169,7 @@ export class CoverageParser {
             try {
                 source(lcovFile, async (err: Error, data: any[]) => {
                     checkError(err);
-                    const sections = await this.convertSectionsToMap(workspaceFolder, data);
+                    const sections = await this.convertSectionsToMap(workspaceFolder, filename, data);
                     return resolve(sections);
                 });
             } catch (error) {
