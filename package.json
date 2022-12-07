@@ -38,10 +38,11 @@
 				"koverage.coverageFilePaths": {
 					"type": "array",
 					"default": [
-						"coverage"
+						"**"
 					],
 					"description": "coverage file paths for the extensions to automatically search in"
 				},
+				"koverage.ignoredPathGlobs": {"type": "string", "default": "**/{node_modules,venv,.venv,vendor}/**"},
 				"koverage.lowCoverageThreshold": {
 					"type": "number",
 					"default": 50,

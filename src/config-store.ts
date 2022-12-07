@@ -39,9 +39,10 @@ export class ConfigStore {
             } else {
                 const coverageFileNames = updatedRawConfig.inspect('coverageFileNames')?.defaultValue as string[];
                 const coverageFilePaths = updatedRawConfig.inspect('coverageFilePaths')?.defaultValue as string[];
+                const ignoredPathGlobs = updatedRawConfig.inspect('ignoredPathGlobs')?.defaultValue as string;
                 const lowCoverageThreshold = updatedRawConfig.inspect('lowCoverageThreshold')?.defaultValue as number;
                 const sufficientCoverageThreshold = updatedRawConfig.inspect('sufficientCoverageThreshold')?.defaultValue as number;
-                rollbackConfig = new Config(coverageFileNames, coverageFilePaths, lowCoverageThreshold, sufficientCoverageThreshold);
+                rollbackConfig = new Config(coverageFileNames, coverageFilePaths, ignoredPathGlobs, lowCoverageThreshold, sufficientCoverageThreshold);
             }
             this.logger.warn(`Invalid configuration : ${updatedConfig}`);
             this.logger.warn(`Last valid configuration will be used : ${rollbackConfig}`);
@@ -56,9 +57,10 @@ export class ConfigStore {
         // Basic configurations
         const coverageFileNames = workspaceConfiguration.get("coverageFileNames") as string[];
         const coverageFilePaths = workspaceConfiguration.get("coverageFilePaths") as string[];
+        const ignoredPathGlobs = workspaceConfiguration.get("ignoredPathGlobs") as string;
         const lowCoverageThreshold = workspaceConfiguration.get("lowCoverageThreshold") as number;
         const sufficientCoverageThreshold = workspaceConfiguration.get("sufficientCoverageThreshold") as number;
-        return new Config(coverageFileNames, coverageFilePaths, lowCoverageThreshold, sufficientCoverageThreshold);
+        return new Config(coverageFileNames, coverageFilePaths, ignoredPathGlobs, lowCoverageThreshold, sufficientCoverageThreshold);
     }
 
     public subscribe(next?: (value: Config) => void, error?: (error: any) => void, complete?: () => void): rx.Subscription {
@@ -73,6 +75,7 @@ export class Config {
     constructor(
         public readonly coverageFileNames: string[],
         public readonly coverageFilePaths: string[],
+        public readonly ignoredPathGlobs: string,
         public readonly lowCoverageThreshold: number,
         public readonly sufficientCoverageThreshold: number
     ) {
