@@ -4,6 +4,13 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.0.13](https://github.com/tenninebt/vscode-koverage/compare/0.0.12...0.0.13) (2022-12-07)
+- Enh [#21](https://github.com/tenninebt/vscode-koverage/issues/21): unable to use absolute file paths
+- Enh [#22](https://github.com/tenninebt/vscode-koverage/issues/22): unable to use "glob file names"
+
+## [0.0.12](https://github.com/tenninebt/vscode-koverage/compare/0.0.10...0.0.12) (2022-10-31)
+- Refactoring, no impact on the users' side
+
 ## [0.0.10](https://github.com/tenninebt/vscode-koverage/compare/0.0.9...0.0.10) (2022-10-27)
 - Enhancement on the auto-release version
 
