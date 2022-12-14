@@ -1,7 +1,7 @@
 import { parseContent as parseContentClover } from "@cvrg-report/clover-json";
 import * as vscodeLogging from '@vscode-logging/logger';
-import { parseContent as parseContentCobertura } from "cobertura-parse";
-import { parseContent as parseContentJacoco } from "jacoco-parse";
+import { parseContent as parseContentCobertura } from "@cvrg-report/cobertura-json";
+import { parseContent as parseContentJacoco } from "@cvrg-report/jacoco-json";
 import { Section, source } from "lcov-parse";
 import * as iopath from 'path';
 import * as vscode from 'vscode';

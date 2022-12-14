@@ -42,7 +42,10 @@
 					],
 					"description": "coverage file paths for the extensions to automatically search in"
 				},
-				"koverage.ignoredPathGlobs": {"type": "string", "default": "**/{node_modules,venv,.venv,vendor}/**"},
+				"koverage.ignoredPathGlobs": {
+					"type": "string",
+					"default": "**/{node_modules,venv,.venv,vendor}/**"
+				},
 				"koverage.lowCoverageThreshold": {
 					"type": "number",
 					"default": 50,
@@ -101,13 +104,11 @@
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
-		"@types/mocha": "^7.0.2",
 		"@types/node": "^13.11.0",
 		"@types/vscode": "^1.44.0",
 		"@typescript-eslint/eslint-plugin": "^2.26.0",
 		"@typescript-eslint/parser": "^2.26.0",
 		"eslint": "^6.8.0",
-		"mocha": "^7.1.1",
 		"ts-loader": "^9.3.1",
 		"typescript": "^4.7.4",
 		"vscode-test": "^1.3.0",
@@ -115,16 +116,13 @@
 		"webpack-cli": "^4.10.0"
 	},
 	"dependencies": {
-		"@cvrg-report/clover-json": "^0.3.0",
 		"@vscode-logging/logger": "^1.2.3",
-		"cobertura-parse": "github:vokal/cobertura-parse#53109a6",
-		"jacoco-parse": "2.0.1",
+		"@cvrg-report/clover-json": "^0.3.0",
+		"@cvrg-report/cobertura-json": "^0.1.3",
+		"@cvrg-report/jacoco-json": "^0.1.2",
 		"lcov-parse": "1.0.0",
 		"rxjs": "^6.5.5"
 	},
 	"overrides": {
-		"minimistxs": "^1.2.6",
-		"mocha": "^7.1.1",
-		"mkdirp": "^0.5.6"
 	}
 }
