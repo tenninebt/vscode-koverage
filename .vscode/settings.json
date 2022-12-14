@@ -18,5 +18,8 @@
         "coverage"
     ],
     "koverage.lowCoverageThreshold": 50,
-    "koverage.sufficientCoverageThreshold": 70
+    "koverage.sufficientCoverageThreshold": 70,
+    "koverage.excludedCoverageFilePaths": [
+        "src/rexo"
+    ]    
 }

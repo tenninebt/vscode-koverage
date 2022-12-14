@@ -12,6 +12,7 @@ This extension contributes the following settings:
 
 * `koverage.coverageFileNames`: coverage file names to look for, default: ["lcov.info", "cov.xml", "coverage.xml","jacoco.xml"]
 * `koverage.coverageFilePaths`: coverage paths where coverage files are located, default: ["coverage"]
+* `koverage.excludedCoverageFilePaths`: coverage paths where coverage files are ignored, default: [""]
 * `koverage.lowCoverageThreshold`: Percentage under which, the coverage is considered too low (Renders as Error icon)
 * `koverage.sufficientCoverageThreshold`: Percentage above which, the coverage is considered sufficient (Renders as Success icon)
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon

@@ -90,7 +90,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
         let coverageData = await this.getRawCoverageData();
 
-        coverageData = await this.postProcessPaths(coverageData);
+        coverageData = await this.postProcessPaths(coverageData, this.configStore.current.excludedCoverageFilePaths);
 
         let nodesMap: Map<string, CoverageNode> = new Map<string, CoverageNode>();
 
@@ -105,7 +105,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             nodesMap.set(workspaceFolderNode.label, workspaceFolderNode);
 
             for (const [codeFilePath, coverageData] of workspaceFolderCoverage.coverage) {
-                
+
                 let pathSteps = codeFilePath.split(iopath.sep);
                 let parentNodePath = workspaceFolderNode.label; //Path in the visual tree
                 let parentRelativeFilePath = ''; //Physical path relative to the workspace folder
@@ -141,7 +141,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
         return nodesMap;
     }
 
-    private async postProcessPaths(coverageData: Set<WorkspaceFolderCoverage>): Promise<Set<WorkspaceFolderCoverage>> {
+    private async postProcessPaths(coverageData: Set<WorkspaceFolderCoverage>, excludedCoverageFilePaths: Array<string>): Promise<Set<WorkspaceFolderCoverage>> {
         const workspaceFiles = await vscode.workspace.findFiles("**/*");
         return new Set([...coverageData].map(
             (folderCoverage: WorkspaceFolderCoverage) => {
@@ -157,7 +157,20 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
                     } else {
                         this.logger.warn(`${coverageSection.file} did not have expected number of matches : ${matches.length}`);
                     }
-                    folderCoverageData.set(coverageSection.file, coverageSection);
+                    let excludeCoverageFilePath = false;
+                    for (const excludedCoverageFilePath of excludedCoverageFilePaths) {
+                        if (excludedCoverageFilePath && vscode.Uri.file(
+                            iopath.join(folderCoverage.workspaceFolder.uri.fsPath, coverageSection.file)).path
+                                .startsWith(vscode.Uri.file(iopath.join(folderCoverage.workspaceFolder.uri.fsPath, excludedCoverageFilePath)).path))
+                        {
+                            excludeCoverageFilePath = true;
+                            break;
+                        }
+                    }
+                    if (excludeCoverageFilePath === false)
+                    {
+                        folderCoverageData.set(coverageSection.file, coverageSection);
+                    }
                 });
                 return new WorkspaceFolderCoverage(folderCoverage.workspaceFolder, folderCoverageData);
         }));

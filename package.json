@@ -42,6 +42,13 @@
 					],
 					"description": "coverage file paths for the extensions to automatically search in"
 				},
+				"koverage.excludedCoverageFilePaths": {
+					"type": "array",
+					"default": [
+						""
+					],
+					"description": "coverage file paths for the extensions to automatically exclude from coverage"
+				},				
 				"koverage.ignoredPathGlobs": {"type": "string", "default": "**/{node_modules,venv,.venv,vendor}/**"},
 				"koverage.lowCoverageThreshold": {
 					"type": "number",
