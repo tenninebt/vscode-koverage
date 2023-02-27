@@ -60,7 +60,7 @@ export class CoverageParser {
 
     private recomputeStats(data: any[] ) {
         data.forEach((section) => {
-            if(!section.hit || !section.found){
+            if(!section.lines.hit || !section.lines.found){
                 section.lines.hit = section.lines.details.reduce((a, b) => a + (b.hit > 0 ? 1 : 0), 0);
                 section.lines.found = section.lines.details.length;
             }
