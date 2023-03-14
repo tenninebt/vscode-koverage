@@ -25,6 +25,11 @@
 		"configuration": {
 			"title": "koverage",
 			"properties": {
+				"koverage.coverageCommand": {
+					"type": "string",
+					"default": "",
+					"description": "command to run to generate coverage"
+				},
 				"koverage.coverageFileNames": {
 					"type": "array",
 					"default": [
@@ -60,6 +65,14 @@
 		},
 		"commands": [
 			{
+				"command": "koverage.generate",
+				"title": "Generate",
+				"icon": {
+					"dark": "resources/dark/play-circle.svg",
+					"light": "resources/light/play-circle.svg"
+				}
+			},
+			{
 				"command": "koverage.refresh",
 				"title": "Refresh",
 				"icon": {
@@ -82,6 +95,11 @@
 		},
 		"menus": {
 			"view/title": [
+				{
+					"command": "koverage.generate",
+					"group": "navigation",
+					"when": "view == koverage"
+				},
 				{
 					"command": "koverage.refresh",
 					"when": "view == koverage",
@@ -123,6 +141,5 @@
 		"lcov-parse": "1.0.0",
 		"rxjs": "^6.5.5"
 	},
-	"overrides": {
-	}
+	"overrides": {}
 }

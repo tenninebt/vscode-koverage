@@ -39,6 +39,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// --- Commands
 	let refresh = vscode.commands.registerCommand('koverage.refresh', () => fileCoverageDataProvider.refresh('<RefreshCommand>'));
+
+	let generateCoverage = vscode.commands.registerCommand('koverage.generate', () => fileCoverageDataProvider.generateCoverage());
+
 	//TODO fix this command
 	let openFile = vscode.commands.registerCommand('koverage.openFile', (node: CoverageNode) => {
 		if (node.command && node.command.arguments) {
@@ -47,6 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 
 	context.subscriptions.push(refresh);
+	context.subscriptions.push(generateCoverage);
 	context.subscriptions.push(openFile);
 	context.subscriptions.push(treeView);
 	context.subscriptions.push(outputChannel);
