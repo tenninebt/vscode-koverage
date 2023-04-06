@@ -1,5 +1,6 @@
 import * as vscodeLogging from '@vscode-logging/logger';
 import * as iopath from 'path';
+import * as cp from 'child_process';
 import * as vscode from 'vscode';
 import { ConfigStore } from './config-store';
 import { CoverageParser } from './coverage-parser';
@@ -11,7 +12,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
     private coverageWatcher: vscode.FileSystemWatcher;
 
-    private readonly rootNodeKey:string = '';
+    private readonly rootNodeKey: string = '';
 
     constructor(
         private readonly configStore: ConfigStore,
@@ -77,6 +78,44 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
         }
     }
 
+    public async generateCoverage(): Promise<string> {
+        if (!vscode.workspace.workspaceFolders) {
+            this.logger.warn('Empty workspace');
+            return Promise.reject("Empty workspace");
+        }
+
+        if (!this.configStore.current.coverageCommand) {
+            this.logger.warn('No coverage command set.');
+            return Promise.reject("No coverage command set.");
+        }
+
+        const rootProjectPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        const coverageCommand = this.configStore.current.coverageCommand;
+        const logger = this.logger;
+
+        const result = new Promise<string>((resolve, reject) => {
+            vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Generating coverage...",
+                cancellable: false
+            }, () => {
+                logger.info(`Running ${coverageCommand} ...`);
+                const progress_promise = new Promise<string>((inner_resolve, inner_reject) => {
+                    cp.exec(coverageCommand, { "cwd": rootProjectPath }, (err, stdout, stderr) => {
+                        if (err) {
+                            logger.error(`Error running coverage command: ${err.message}\n${stderr}`);
+                            return inner_reject(err.message);
+                        }
+                        logger.info("Successfully generated coverage");
+                        return inner_resolve(stdout);
+                    });
+                }).then(x => resolve(x)).catch(x => reject(x));
+                return progress_promise;
+            });
+        });
+        return result;
+    }
+
     private async getRawCoverageData(): Promise<Set<WorkspaceFolderCoverage>> {
         let coverageData = await this.filesLoader
             .loadCoverageFiles()
@@ -105,7 +144,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             nodesMap.set(workspaceFolderNode.label, workspaceFolderNode);
 
             for (const [codeFilePath, coverageData] of workspaceFolderCoverage.coverage) {
-                
+
                 let pathSteps = codeFilePath.split(iopath.sep);
                 let parentNodePath = workspaceFolderNode.label; //Path in the visual tree
                 let parentRelativeFilePath = ''; //Physical path relative to the workspace folder
@@ -148,9 +187,9 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
                 const folderCoverageData = new Map<string, CoverageSection>();
                 folderCoverage.coverage.forEach((coverageSection: CoverageSection, key: string) => {
                     let matches = workspaceFiles.filter((file) => file.fsPath.endsWith(coverageSection.file));
-                    if(matches.length === 1) {
+                    if (matches.length === 1) {
                         let matchedPath = matches[0].fsPath.replace(folderCoverage.workspaceFolder.uri.fsPath, "");
-                        if(coverageSection.file !== matchedPath) {
+                        if (coverageSection.file !== matchedPath) {
                             this.logger.debug(`Replacing coverage section path ${coverageSection.file} by ${matchedPath}`);
                             coverageSection.file = matchedPath;
                         }
@@ -160,7 +199,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
                     folderCoverageData.set(coverageSection.file, coverageSection);
                 });
                 return new WorkspaceFolderCoverage(folderCoverage.workspaceFolder, folderCoverageData);
-        }));
+            }));
     }
 
     private _onDidChangeTreeData: vscode.EventEmitter<CoverageNode | undefined> = new vscode.EventEmitter<CoverageNode | undefined>();

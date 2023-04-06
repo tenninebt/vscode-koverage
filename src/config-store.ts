@@ -37,15 +37,17 @@ export class ConfigStore {
             if (this._current?.isValid) {
                 rollbackConfig = this._current;
             } else {
+                const coverageCommand = updatedRawConfig.inspect('coverageCommand')?.defaultValue as string;
                 const coverageFileNames = updatedRawConfig.inspect('coverageFileNames')?.defaultValue as string[];
                 const coverageFilePaths = updatedRawConfig.inspect('coverageFilePaths')?.defaultValue as string[];
                 const ignoredPathGlobs = updatedRawConfig.inspect('ignoredPathGlobs')?.defaultValue as string;
                 const lowCoverageThreshold = updatedRawConfig.inspect('lowCoverageThreshold')?.defaultValue as number;
                 const sufficientCoverageThreshold = updatedRawConfig.inspect('sufficientCoverageThreshold')?.defaultValue as number;
-                rollbackConfig = new Config(coverageFileNames, coverageFilePaths, ignoredPathGlobs, lowCoverageThreshold, sufficientCoverageThreshold);
+                rollbackConfig = new Config(coverageCommand, coverageFileNames, coverageFilePaths, ignoredPathGlobs, lowCoverageThreshold, sufficientCoverageThreshold);
             }
             this.logger.warn(`Invalid configuration : ${updatedConfig}`);
             this.logger.warn(`Last valid configuration will be used : ${rollbackConfig}`);
+            updatedRawConfig.update(`coverageCommand`, rollbackConfig.coverageCommand);
             updatedRawConfig.update(`coverageFileNames`, rollbackConfig.coverageFileNames);
             updatedRawConfig.update(`coverageFilePaths`, rollbackConfig.coverageFilePaths);
             updatedRawConfig.update(`lowCoverageThreshold`, rollbackConfig.lowCoverageThreshold);
@@ -55,12 +57,13 @@ export class ConfigStore {
 
     private convertConfig(workspaceConfiguration: vscode.WorkspaceConfiguration): Config {
         // Basic configurations
+        const coverageCommand = workspaceConfiguration.get("coverageCommand") as string;
         const coverageFileNames = workspaceConfiguration.get("coverageFileNames") as string[];
         const coverageFilePaths = workspaceConfiguration.get("coverageFilePaths") as string[];
         const ignoredPathGlobs = workspaceConfiguration.get("ignoredPathGlobs") as string;
         const lowCoverageThreshold = workspaceConfiguration.get("lowCoverageThreshold") as number;
         const sufficientCoverageThreshold = workspaceConfiguration.get("sufficientCoverageThreshold") as number;
-        return new Config(coverageFileNames, coverageFilePaths, ignoredPathGlobs, lowCoverageThreshold, sufficientCoverageThreshold);
+        return new Config(coverageCommand, coverageFileNames, coverageFilePaths, ignoredPathGlobs, lowCoverageThreshold, sufficientCoverageThreshold);
     }
 
     public subscribe(next?: (value: Config) => void, error?: (error: any) => void, complete?: () => void): rx.Subscription {
@@ -73,6 +76,7 @@ export class Config {
     public readonly isValid: boolean;
 
     constructor(
+        public readonly coverageCommand: string,
         public readonly coverageFileNames: string[],
         public readonly coverageFilePaths: string[],
         public readonly ignoredPathGlobs: string,
