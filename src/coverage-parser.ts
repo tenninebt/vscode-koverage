@@ -2,12 +2,12 @@ import { parseContent as parseContentClover } from "@cvrg-report/clover-json";
 import * as vscodeLogging from '@vscode-logging/logger';
 import { parseContent as parseContentCobertura } from "@cvrg-report/cobertura-json";
 import { parseContent as parseContentJacoco } from "@cvrg-report/jacoco-json";
-import { Section, source } from "lcov-parse";
+import { LcovFile, source } from "lcov-parse";
 import * as iopath from 'path';
 import * as vscode from 'vscode';
 import { CoverageFile, CoverageType } from "./coverage-file";
 import { WorkspaceFolderCoverage, WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file";
-
+import { CoverageSection as Section } from "./coverage-section";
 
 export class CoverageParser {
 
@@ -58,8 +58,9 @@ export class CoverageParser {
         return workspaceCoverage;
     }
 
-    private recomputeStats(data: any[] ) {
+    private recomputeStats(data: Section[] ) {
         data.forEach((section) => {
+            if(!section.lines) { return; }
             if(!section.lines.hit || !section.lines.found){
                 section.lines.hit = section.lines.details.reduce((a, b) => a + (b.hit > 0 ? 1 : 0), 0);
                 section.lines.found = section.lines.details.length;
@@ -69,7 +70,7 @@ export class CoverageParser {
 
     private async convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, sourceFile: string, data: Section[]): Promise<Map<string, Section>> {
         const sections = new Map<string, Section>();
-        const addToSectionsMap = async (section: { title: string; file: string; }) => {
+        const addToSectionsMap = async (section: Section) => {
             try {
                 if(!section.file) {
                     this.logger.warn(`Invalid section in the coverage file: ${sourceFile}`);
@@ -158,7 +159,7 @@ export class CoverageParser {
 
     private lcovExtract(workspaceFolder: vscode.WorkspaceFolder, filename: string, lcovFile: string) {
         return new Promise<Map<string, Section>>((resolve, reject) => {
-            const checkError = (err: Error) => {
+            const checkError = (err?: Error) => {
                 if (err) {
                     err.message = `filename: ${filename} ${err.message}`;
                     this.handleError("lcov-parse", err);
@@ -167,8 +168,8 @@ export class CoverageParser {
             };
 
             try {
-                source(lcovFile, async (err: Error, data: any[]) => {
-                    checkError(err);
+                source(lcovFile, async (err: string | null, data: LcovFile[]) => {
+                    checkError(err ? new Error(err) : undefined);
                     const sections = await this.convertSectionsToMap(workspaceFolder, filename, data);
                     return resolve(sections);
                 });
