@@ -1,15 +1,15 @@
-import { CoverageSection } from "./coverage-section";
-import * as vscode from 'vscode';
+import { type CoverageSection } from "./coverage-section"
+import type * as vscode from "vscode"
 
 export class WorkspaceFolderCoverageFiles {
-    public readonly coverageFiles: Set<WorkspaceFolderCoverageFile> = new Set<WorkspaceFolderCoverageFile>();
-    constructor(public readonly workspaceFolder: vscode.WorkspaceFolder) { }
+  public readonly coverageFiles: Set<WorkspaceFolderCoverageFile> = new Set<WorkspaceFolderCoverageFile>()
+  constructor(public readonly workspaceFolder: vscode.WorkspaceFolder) {}
 }
 
 export class WorkspaceFolderCoverageFile {
-    constructor(public readonly path: string, public readonly content: string) { }
+  constructor(public readonly path: string, public readonly content: string) {}
 }
 
 export class WorkspaceFolderCoverage {
-    constructor(public readonly workspaceFolder: vscode.WorkspaceFolder, public readonly coverage: Map<string, CoverageSection>) {}
+  constructor(public readonly workspaceFolder: vscode.WorkspaceFolder, public readonly coverage: Map<string, CoverageSection>) {}
 }

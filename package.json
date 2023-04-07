@@ -1,145 +1,158 @@
 {
-	"name": "vscode-koverage",
-	"publisher": "tenninebt",
-	"displayName": "Koverage",
-	"keywords": [
-		"coverage",
-		"lcov",
-		"jacoco"
-	],
-	"repository": "https://github.com/tenninebt/vscode-koverage",
-	"description": "View the code coverage per folder/file in the test view",
-	"version": "0.0.13",
-	"engines": {
-		"vscode": "^1.44.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"icon": "resources/icon.png",
-	"activationEvents": [
-		"onView:koverage"
-	],
-	"main": "./dist/extension.js",
-	"contributes": {
-		"configuration": {
-			"title": "koverage",
-			"properties": {
-				"koverage.coverageCommand": {
-					"type": "string",
-					"default": "",
-					"description": "command to run to generate coverage"
-				},
-				"koverage.coverageFileNames": {
-					"type": "array",
-					"default": [
-						"lcov.info",
-						"cov.xml",
-						"coverage.xml",
-						"jacoco.xml"
-					],
-					"description": "coverage file names for the extension to automatically look for"
-				},
-				"koverage.coverageFilePaths": {
-					"type": "array",
-					"default": [
-						"**"
-					],
-					"description": "coverage file paths for the extensions to automatically search in"
-				},
-				"koverage.ignoredPathGlobs": {
-					"type": "string",
-					"default": "**/{node_modules,venv,.venv,vendor}/**"
-				},
-				"koverage.lowCoverageThreshold": {
-					"type": "number",
-					"default": 50,
-					"description": "coverage threshold considered too low"
-				},
-				"koverage.sufficientCoverageThreshold": {
-					"type": "number",
-					"default": 70,
-					"description": "coverage threshold considered sufficient"
-				}
-			}
-		},
-		"commands": [
-			{
-				"command": "koverage.generate",
-				"title": "Generate",
-				"icon": {
-					"dark": "resources/dark/play-circle.svg",
-					"light": "resources/light/play-circle.svg"
-				}
-			},
-			{
-				"command": "koverage.refresh",
-				"title": "Refresh",
-				"icon": {
-					"dark": "resources/dark/refresh.svg",
-					"light": "resources/light/refresh.svg"
-				}
-			},
-			{
-				"command": "koverage.openFile",
-				"title": "Open"
-			}
-		],
-		"views": {
-			"test": [
-				{
-					"id": "koverage",
-					"name": "Koverage"
-				}
-			]
-		},
-		"menus": {
-			"view/title": [
-				{
-					"command": "koverage.generate",
-					"group": "navigation",
-					"when": "view == koverage"
-				},
-				{
-					"command": "koverage.refresh",
-					"when": "view == koverage",
-					"group": "navigation"
-				}
-			],
-			"view/item/context": [
-				{
-					"command": "koverage.openFile",
-					"when": "view == koverage && viewItem == FileCoverageNode"
-				}
-			]
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "webpack --mode production",
-		"webpack": "webpack --mode development",
-		"webpack-dev": "webpack --mode development --watch",
-		"test-compile": "tsc -p ./"
-	},
-	"devDependencies": {
-		"@types/glob": "^7.1.1",
-		"@types/node": "^13.11.0",
-		"@types/vscode": "^1.44.0",
-		"@typescript-eslint/eslint-plugin": "^2.26.0",
-		"@typescript-eslint/parser": "^2.26.0",
-		"eslint": "^6.8.0",
-		"ts-loader": "^9.3.1",
-		"typescript": "^4.7.4",
-		"vscode-test": "^1.3.0",
-		"webpack": "^5.74.0",
-		"webpack-cli": "^4.10.0"
-	},
-	"dependencies": {
-		"@vscode-logging/logger": "^1.2.3",
-		"@cvrg-report/clover-json": "^0.3.0",
-		"@cvrg-report/cobertura-json": "^0.1.3",
-		"@cvrg-report/jacoco-json": "^0.1.2",
-		"lcov-parse": "1.0.0",
-		"rxjs": "^6.5.5"
-	},
-	"overrides": {}
+  "name": "vscode-koverage",
+  "publisher": "tenninebt",
+  "displayName": "Koverage",
+  "keywords": [
+    "coverage",
+    "lcov",
+    "jacoco"
+  ],
+  "repository": "https://github.com/tenninebt/vscode-koverage",
+  "description": "View the code coverage per folder/file in the test view",
+  "version": "0.0.13",
+  "engines": {
+    "vscode": "^1.76.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "icon": "resources/icon.png",
+  "activationEvents": [
+    "onView:koverage"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "koverage",
+      "properties": {
+        "koverage.coverageCommand": {
+          "type": "string",
+          "default": "",
+          "description": "command to run to generate coverage",
+          "scope": "resource"
+        },
+        "koverage.coverageFileNames": {
+          "type": "array",
+          "default": [
+            "lcov.info",
+            "cov.xml",
+            "coverage.xml",
+            "jacoco.xml"
+          ],
+          "description": "coverage file names for the extension to automatically look for",
+          "scope": "resource"
+        },
+        "koverage.coverageFilePaths": {
+          "type": "array",
+          "default": [
+            "**"
+          ],
+          "description": "coverage file paths for the extensions to automatically search in",
+          "scope": "resource"
+        },
+        "koverage.ignoredPathGlobs": {
+          "type": "string",
+          "default": "**/{node_modules,venv,.venv,vendor}/**",
+          "scope": "resource"
+        },
+        "koverage.lowCoverageThreshold": {
+          "type": "number",
+          "default": 50,
+          "description": "coverage threshold considered too low",
+          "scope": "resource"
+        },
+        "koverage.sufficientCoverageThreshold": {
+          "type": "number",
+          "default": 70,
+          "description": "coverage threshold considered sufficient",
+          "scope": "resource"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "koverage.generate",
+        "title": "Generate",
+        "icon": {
+          "dark": "resources/dark/play-circle.svg",
+          "light": "resources/light/play-circle.svg"
+        }
+      },
+      {
+        "command": "koverage.refresh",
+        "title": "Refresh",
+        "icon": {
+          "dark": "resources/dark/refresh.svg",
+          "light": "resources/light/refresh.svg"
+        }
+      },
+      {
+        "command": "koverage.openFile",
+        "title": "Open"
+      }
+    ],
+    "views": {
+      "test": [
+        {
+          "id": "koverage",
+          "name": "Koverage"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "koverage.generate",
+          "group": "navigation",
+          "when": "view == koverage"
+        },
+        {
+          "command": "koverage.refresh",
+          "when": "view == koverage",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "koverage.openFile",
+          "when": "view == koverage && viewItem == FileCoverageNode"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint ./src",
+    "build:prod": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "build:watch": "webpack --mode development --watch",
+    "compile": "swc .",
+    "test:compile": "tsc -p ./"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.3.46",
+    "@types/glob": "^8.1.0",
+    "@types/node": "^18.15.11",
+    "@types/vscode": "^1.76.0",
+    "@typescript-eslint/eslint-plugin": "^5.57.1",
+    "eslint": "^8.37.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-config-standard-with-typescript": "^34.0.1",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-n": "^15.7.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "swc-loader": "^0.2.3",
+    "typescript": "^5.0.3",
+    "vscode-test": "^1.3.0",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "dependencies": {
+    "@cvrg-report/clover-json": "^0.3.0",
+    "@cvrg-report/cobertura-json": "^0.1.3",
+    "@cvrg-report/jacoco-json": "^0.1.2",
+    "@vscode-logging/logger": "^1.2.3",
+    "lcov-parse": "1.0.0",
+    "rxjs": "^7.8.0"
+  },
+  "overrides": {}
 }
