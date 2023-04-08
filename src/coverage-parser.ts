@@ -56,7 +56,7 @@ export class CoverageParser {
   private recomputeStats(data: any[]): void {
     data.forEach((section) => {
       if (!section.hit || !section.found) {
-        section.lines.hit = section.lines.details.reduce((a, b) => a + (b.hit > 0 ? 1 : 0), 0)
+        section.lines.hit = section.lines.details.reduce((a: number, b: { hit: number }) => a + (b.hit > 0 ? 1 : 0), 0)
         section.lines.found = section.lines.details.length
       }
     })
@@ -64,7 +64,7 @@ export class CoverageParser {
 
   private async convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, sourceFile: string, data: Section[]): Promise<Map<string, Section>> {
     const sections = new Map<string, Section>()
-    const addToSectionsMap = async (section: { title: string; file: string }) => {
+    const addToSectionsMap = async (section: { title: string; file: string }): Promise<void> => {
       try {
         if (!section.file) {
           this.logger.warn(`Invalid section in the coverage file: ${sourceFile}`)
@@ -93,9 +93,9 @@ export class CoverageParser {
     return sections
   }
 
-  private async xmlExtractCobertura(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string) {
+  private async xmlExtractCobertura(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, Section>> {
     return await new Promise<Map<string, Section>>((resolve, reject) => {
-      const checkError = (err: Error) => {
+      const checkError = (err: Error): void => {
         if (err) {
           err.message = `filename: ${filename} ${err.message}`
           this.handleError("cobertura-parse", err)
@@ -119,9 +119,9 @@ export class CoverageParser {
     })
   }
 
-  private async xmlExtractJacoco(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string) {
+  private async xmlExtractJacoco(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, Section>> {
     return await new Promise<Map<string, Section>>((resolve, reject) => {
-      const checkError = (err: Error) => {
+      const checkError = (err: Error): void => {
         if (err) {
           err.message = `filename: ${filename} ${err.message}`
           this.handleError("jacoco-parse", err)
@@ -141,21 +141,22 @@ export class CoverageParser {
     })
   }
 
-  private async xmlExtractClover(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string) {
+  private async xmlExtractClover(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, Section>> {
     try {
       const data = await parseContentClover(xmlFile)
       const sections = await this.convertSectionsToMap(workspaceFolder, filename, data)
       return sections
-    } catch (error) {
-      error.message = `filename: ${filename} ${error.message}`
-      this.handleError("clover-parse", error)
+    } catch (error: unknown) {
+      const message = `filename: ${filename} ${(error as Error).message}`
+      this.handleError("clover-parse", new Error(message))
+      // return empty map (no coverage
       return new Map<string, Section>()
     }
   }
 
-  private async lcovExtract(workspaceFolder: vscode.WorkspaceFolder, filename: string, lcovFile: string) {
+  private async lcovExtract(workspaceFolder: vscode.WorkspaceFolder, filename: string, lcovFile: string): Promise<Map<string, Section>> {
     return await new Promise<Map<string, Section>>((resolve, reject) => {
-      const checkError = (err: Error) => {
+      const checkError = (err: Error): void => {
         if (err) {
           err.message = `filename: ${filename} ${err.message}`
           this.handleError("lcov-parse", err)
@@ -175,9 +176,9 @@ export class CoverageParser {
     })
   }
 
-  private handleError(system: string, error: Error) {
-    const message = error.message ? error.message : error
-    const stackTrace = error.stack
+  private handleError(system: string, error: Error): void {
+    const message = error.message ? error.message : error?.toString()
+    const stackTrace = error.stack ?? ""
     this.logger.error(`[${Date.now()}][coverageparser][${system}]: Error: ${message}\n${stackTrace}`)
   }
 }

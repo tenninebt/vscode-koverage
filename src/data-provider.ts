@@ -87,53 +87,45 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
   }
 
   public async generateCoverage(): Promise<string> {
-    if (vscode.workspace.workspaceFolders == null) {
-      this.logger.warn("Empty workspace")
-      return await Promise.reject("Empty workspace")
-    }
-
-    const promises = vscode.workspace.workspaceFolders.map(async (workspaceFolder) => {
-      const coverageCommand = this.configStore.get(workspaceFolder)?.coverageCommand
-      if (!coverageCommand) {
-        this.logger.warn("No coverage command set.")
-        return await Promise.reject(new Error("No coverage command set."))
-      }
-      const projectPath = workspaceFolder.uri.fsPath
-      const logger = this.logger
-
-      return await new Promise<string>(async (resolve, reject) => {
-        await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: "Generating coverage...",
-            cancellable: false
-          },
-          async () => {
-            logger.info(`Running ${coverageCommand} ...`)
-            const progress_promise = new Promise<string>((inner_resolve, inner_reject) => {
-              cp.exec(coverageCommand, { cwd: projectPath }, (err, stdout, stderr) => {
-                if (err != null) {
-                  logger.error(`Error running coverage command: ${err.message}\n${stderr}`)
-                  inner_reject(err.message)
-                  return
-                }
-                logger.info("Successfully generated coverage")
-                inner_resolve(stdout)
-              })
-            })
-              .then((x) => {
-                resolve(x)
-              })
-              .catch((x) => {
-                reject(x)
-              })
-            await progress_promise
+    return await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "Generating coverage...",
+        cancellable: false
+      },
+      async () => {
+        if (!vscode.workspace.workspaceFolders) {
+          this.logger.warn("Empty workspace")
+          throw new Error("Empty workspace")
+        }
+        const promises: Array<Promise<string>> = vscode.workspace.workspaceFolders.map(async (workspaceFolder) => {
+          const coverageCommand = this.configStore.get(workspaceFolder)?.coverageCommand
+          if (!coverageCommand) {
+            this.logger.warn("No coverage command set.")
+            throw new Error("No coverage command set.")
           }
-        )
-      })
-    })
+          const projectPath = workspaceFolder.uri.fsPath
+          const logger = this.logger
 
-    return (await Promise.all(promises)).join("\n")
+          logger.info(`Running ${coverageCommand} ...`)
+
+          // eslint-disable-next-line @typescript-eslint/naming-convention, promise/param-names
+          const progressPromise = new Promise<string>((inner_resolve, inner_reject) => {
+            cp.exec(coverageCommand, { cwd: projectPath }, (err, stdout, stderr) => {
+              if (err != null) {
+                logger.error(`Error running coverage command: ${err.message}\n${stderr}`)
+                inner_reject(err.message)
+                return
+              }
+              logger.info("Successfully generated coverage")
+              inner_resolve(stdout)
+            })
+          })
+          return await progressPromise
+        })
+        return (await Promise.all(promises)).join("\n")
+      }
+    )
   }
 
   private async getRawCoverageData(): Promise<Set<WorkspaceFolderCoverage>> {
@@ -288,7 +280,7 @@ export abstract class CoverageNode extends BaseNode {
   }
 
   private formatCoverage(): string {
-    return +this.getCoveragePercent().toFixed(1) + "%"
+    return `${+this.getCoveragePercent().toFixed(1)}%`
   }
 
   private getCoverageLevel(): CoverageLevel {
@@ -302,7 +294,7 @@ export abstract class CoverageNode extends BaseNode {
   }
 
   // @ts-expect-error Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
-  get iconPath() {
+  get iconPath(): { light: string; dark: string } {
     const light = iopath.join(__dirname, "..", "resources", "light", `${this.getCoverageLevel().toString()}.svg`)
     const dark = iopath.join(__dirname, "..", "resources", "dark", `${this.getCoverageLevel().toString()}.svg`)
     return {
