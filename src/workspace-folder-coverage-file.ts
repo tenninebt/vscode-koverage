@@ -1,4 +1,4 @@
-import { type CoverageSection } from "./coverage-section"
+import { type Section as CoverageSection } from "lcov-parse"
 import type * as vscode from "vscode"
 
 export class WorkspaceFolderCoverageFiles {

@@ -1,8 +1,8 @@
 import { parseContent as parseContentClover } from "@cvrg-report/clover-json"
 import type * as vscodeLogging from "@vscode-logging/logger"
-import { parseContent as parseContentCobertura } from "@cvrg-report/cobertura-json"
-import { parseContent as parseContentJacoco } from "@cvrg-report/jacoco-json"
-import { type Section, source } from "lcov-parse"
+import { parseContent as coberturaJson } from "@cvrg-report/cobertura-json"
+import { parseContent as jacocoJson } from "@cvrg-report/jacoco-json"
+import { type Section as CoverageSection, source } from "lcov-parse"
 import * as iopath from "path"
 import type * as vscode from "vscode"
 import { CoverageFile, CoverageType } from "./coverage-file"
@@ -19,11 +19,11 @@ export class CoverageParser {
     const workspaceCoverage = new Set<WorkspaceFolderCoverage>()
 
     for (const folder of workspaceFolders) {
-      let workspaceFolderCoverage = new Map<string, Section>()
+      let workspaceFolderCoverage = new Map<string, CoverageSection>()
 
       for (const file of folder.coverageFiles) {
         // file is an array
-        let coverage: Map<string, Section> = new Map<string, Section>()
+        let coverage: Map<string, CoverageSection> = new Map<string, CoverageSection>()
 
         // get coverage file type
         const coverageFile = new CoverageFile(file.content)
@@ -55,16 +55,19 @@ export class CoverageParser {
 
   private recomputeStats(data: any[]): void {
     data.forEach((section) => {
-      if (!section.hit || !section.found) {
-        section.lines.hit = section.lines.details.reduce((a: number, b: { hit: number }) => a + (b.hit > 0 ? 1 : 0), 0)
-        section.lines.found = section.lines.details.length
+      if (!section.lines?.hit || !section.lines?.found) {
+        section.lines = {
+          ...section.lines,
+          hit: section.lines.details?.reduce((a: number, b: { hit: number }) => a + (b.hit > 0 ? 1 : 0), 0),
+          found: section.lines.details?.length
+        }
       }
     })
   }
 
-  private async convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, sourceFile: string, data: Section[]): Promise<Map<string, Section>> {
-    const sections = new Map<string, Section>()
-    const addToSectionsMap = async (section: { title: string; file: string }): Promise<void> => {
+  private convertSectionsToMap(workspaceFolder: vscode.WorkspaceFolder, sourceFile: string, data: CoverageSection[]): Map<string, CoverageSection> {
+    const sections = new Map<string, CoverageSection>()
+    const addToSectionsMap = (section: CoverageSection): void => {
       try {
         if (!section.file) {
           this.logger.warn(`Invalid section in the coverage file: ${sourceFile}`)
@@ -88,27 +91,30 @@ export class CoverageParser {
     }
 
     // convert the array of sections into an unique map
-    const addPromises = data.map(addToSectionsMap)
-    await Promise.all(addPromises)
+    data.map(addToSectionsMap)
     return sections
   }
 
-  private async xmlExtractCobertura(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, Section>> {
-    return await new Promise<Map<string, Section>>((resolve, reject) => {
+  private async xmlExtractCobertura(
+    workspaceFolder: vscode.WorkspaceFolder,
+    filename: string,
+    xmlFile: string
+  ): Promise<Map<string, CoverageSection>> {
+    return await new Promise<Map<string, CoverageSection>>((resolve, reject) => {
       const checkError = (err: Error): void => {
         if (err) {
           err.message = `filename: ${filename} ${err.message}`
           this.handleError("cobertura-parse", err)
-          resolve(new Map<string, Section>())
+          resolve(new Map<string, CoverageSection>())
         }
       }
 
       try {
-        parseContentCobertura(
+        coberturaJson.parseContent(
           xmlFile,
-          async (err: any, data: any[]) => {
+          (err: any, data: any[]) => {
             checkError(err)
-            const sections = await this.convertSectionsToMap(workspaceFolder, filename, data)
+            const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
             resolve(sections)
           },
           true
@@ -119,20 +125,20 @@ export class CoverageParser {
     })
   }
 
-  private async xmlExtractJacoco(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, Section>> {
-    return await new Promise<Map<string, Section>>((resolve, reject) => {
+  private async xmlExtractJacoco(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, CoverageSection>> {
+    return await new Promise<Map<string, CoverageSection>>((resolve, reject) => {
       const checkError = (err: Error): void => {
         if (err) {
           err.message = `filename: ${filename} ${err.message}`
           this.handleError("jacoco-parse", err)
-          resolve(new Map<string, Section>())
+          resolve(new Map<string, CoverageSection>())
         }
       }
 
       try {
-        parseContentJacoco(xmlFile, async (err: any, data: any[]) => {
+        jacocoJson.parseContent(xmlFile, (err: any, data: any[]) => {
           checkError(err)
-          const sections = await this.convertSectionsToMap(workspaceFolder, filename, data)
+          const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
           resolve(sections)
         })
       } catch (error) {
@@ -141,33 +147,33 @@ export class CoverageParser {
     })
   }
 
-  private async xmlExtractClover(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, Section>> {
+  private async xmlExtractClover(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, CoverageSection>> {
     try {
       const data = await parseContentClover(xmlFile)
-      const sections = await this.convertSectionsToMap(workspaceFolder, filename, data)
+      const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
       return sections
     } catch (error: unknown) {
       const message = `filename: ${filename} ${(error as Error).message}`
       this.handleError("clover-parse", new Error(message))
       // return empty map (no coverage
-      return new Map<string, Section>()
+      return new Map<string, CoverageSection>()
     }
   }
 
-  private async lcovExtract(workspaceFolder: vscode.WorkspaceFolder, filename: string, lcovFile: string): Promise<Map<string, Section>> {
-    return await new Promise<Map<string, Section>>((resolve, reject) => {
+  private async lcovExtract(workspaceFolder: vscode.WorkspaceFolder, filename: string, lcovFile: string): Promise<Map<string, CoverageSection>> {
+    return await new Promise<Map<string, CoverageSection>>((resolve, reject) => {
       const checkError = (err: Error): void => {
         if (err) {
           err.message = `filename: ${filename} ${err.message}`
           this.handleError("lcov-parse", err)
-          resolve(new Map<string, Section>())
+          reject(err)
         }
       }
 
       try {
-        source(lcovFile, async (err: Error, data: any[]) => {
+        source(lcovFile, (err: Error, data: any[]) => {
           checkError(err)
-          const sections = await this.convertSectionsToMap(workspaceFolder, filename, data)
+          const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
           resolve(sections)
         })
       } catch (error) {

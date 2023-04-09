@@ -1,11 +1,12 @@
 import type * as vscodeLogging from "@vscode-logging/logger"
+import * as fs from "fs"
 import * as iopath from "path"
 import * as cp from "child_process"
 import * as vscode from "vscode"
 import { type ConfigStore } from "./config-store"
 import { type CoverageParser } from "./coverage-parser"
-import { type CoverageSection } from "./coverage-section"
 import { type FilesLoader } from "./files-loader"
+import { type Section as CoverageSection } from "lcov-parse"
 import { WorkspaceFolderCoverage } from "./workspace-folder-coverage-file"
 
 export class FileCoverageDataProvider implements vscode.TreeDataProvider<CoverageNode>, vscode.Disposable {
@@ -172,6 +173,12 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
             if (!nodesMap.has(relativeNodePath)) {
               let node: CoverageNode
               if (index === pathSteps.length - 1) {
+                if (!fs.existsSync(absoluteFilePath)) {
+                  this.logger.warn(
+                    `File ${absoluteFilePath} does not exist, if you are using a multiroot workspace, make sure you opened the .code-workspace instead of folder`
+                  )
+                }
+
                 // IsLeaf node
                 node = new FileCoverageNode(absoluteFilePath, step, coverageLevelThresholds, coverageData.lines.found, coverageData.lines.hit)
               } else {
