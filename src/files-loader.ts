@@ -1,91 +1,89 @@
-import * as vscodeLogging from '@vscode-logging/logger';
-import * as glob from "glob";
-import * as fs from 'fs';
-import { readFile } from "fs";
-import * as iopath from "path";
-import * as vscode from 'vscode';
-import { ConfigStore } from "./config-store";
-import { WorkspaceFolderCoverageFile, WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file";
+import type * as vscodeLogging from "@vscode-logging/logger"
+import { glob } from "glob"
+import { readFile } from "fs"
+import * as vscode from "vscode"
+import { type ConfigStore } from "./config-store"
+import { WorkspaceFolderCoverageFile, WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file"
 
 export class FilesLoader {
+  constructor(private readonly configStore: ConfigStore, private readonly logger: vscodeLogging.IVSCodeExtLogger) {}
 
-    constructor(private readonly configStore: ConfigStore, private readonly logger: vscodeLogging.IVSCodeExtLogger) { }
-
-
-    /**
-     * Takes files and converts to data strings for coverage consumption
-     * @param files files that are to turned into data strings
-     */
-    public async loadCoverageFiles(): Promise<Set<WorkspaceFolderCoverageFiles>> {
-        const fileNames = this.configStore.current.coverageFileNames;
-        const filesPaths = this.configStore.current.coverageFilePaths;
-        const files = await this.loadCoverageInWorkspace(filesPaths, fileNames);
-        if (!files.size) {
-            this.logger.warn('Could not find a Coverage file!');
-        }
-        return files;
+  /**
+   * Takes files and converts to data strings for coverage consumption
+   * @param files files that are to turned into data strings
+   */
+  public async loadCoverageFiles(): Promise<Set<WorkspaceFolderCoverageFiles>> {
+    const files = await this.loadCoverageInWorkspace()
+    if (!files.size) {
+      this.logger.warn("Could not find a Coverage file!")
     }
-    private async loadCoverageInWorkspace(filesPaths: string[], fileNames: string[]): Promise<Set<WorkspaceFolderCoverageFiles>> {
-        let coverageFiles = new Map<string, WorkspaceFolderCoverageFiles>();
-        if (vscode.workspace.workspaceFolders) {
-            for (const workspaceFolder of vscode.workspace.workspaceFolders) {
-                for (const filePath of filesPaths) {
-                    for (const fileName of fileNames) {
-                        
-                        const coverageFileFullPath = await this.globFind(workspaceFolder, fileName, filePath);
+    return files
+  }
 
-                        for (var f of coverageFileFullPath) {
-                            if (!coverageFiles.has(workspaceFolder.uri.fsPath)) {
-                                coverageFiles.set(workspaceFolder.uri.fsPath, new WorkspaceFolderCoverageFiles(workspaceFolder));
-                            }
-                            coverageFiles.get(workspaceFolder.uri.fsPath)?.coverageFiles.add(new WorkspaceFolderCoverageFile(f, await this.load(f)));
-                        }
-                    }
-                }
+  private async loadCoverageInWorkspace(): Promise<Set<WorkspaceFolderCoverageFiles>> {
+    const coverageFiles = new Map<string, WorkspaceFolderCoverageFiles>()
+    if (vscode.workspace.workspaceFolders != null) {
+      for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+        const folderConfig = this.configStore.get(workspaceFolder)
+        const filesPaths = folderConfig?.coverageFilePaths ?? []
+        const fileNames = folderConfig?.coverageFileNames ?? []
+        for (const filePath of filesPaths) {
+          for (const fileName of fileNames) {
+            const coverageFileFullPath = await this.globFind(workspaceFolder, fileName, filePath)
+
+            for (const f of coverageFileFullPath) {
+              if (!coverageFiles.has(workspaceFolder.uri.fsPath)) {
+                coverageFiles.set(workspaceFolder.uri.fsPath, new WorkspaceFolderCoverageFiles(workspaceFolder))
+              }
+              coverageFiles.get(workspaceFolder.uri.fsPath)?.coverageFiles.add(new WorkspaceFolderCoverageFile(f, await this.load(f)))
             }
-        } else {
-            this.logger.warn('Empty workspace');
+          }
         }
-
-        return new Set<WorkspaceFolderCoverageFiles>(coverageFiles.values());
+      }
+    } else {
+      this.logger.warn("Empty workspace")
     }
 
-    private globFind(
-        workspaceFolder: vscode.WorkspaceFolder,
-        fileName: string,
-        filePath: string
-    ) {
-        return new Promise<Set<string>>((resolve) => {
-            glob(`${filePath}/${fileName}`,
-                {
-                    cwd: workspaceFolder.uri.fsPath,
-                    dot: true,
-                    ignore: this.configStore.current.ignoredPathGlobs,
-                    realpath: true,
-                    strict: false,
-                },
-                (err, files) => {
-                    if (!files || !files.length) {
-                        // Show any errors if no file was found.
-                        if (err) {
-                            vscode.window.showWarningMessage(`An error occured while looking for the coverage file ${err}`);
-                        }
-                        return resolve(new Set());
-                    }
-                    const setFiles = new Set<string>();
-                    files.forEach((file) => setFiles.add(file));
-                    return resolve(setFiles);
-                },
-            );
-        });
-    }
+    return new Set<WorkspaceFolderCoverageFiles>(coverageFiles.values())
+  }
 
-    private load(path: string): Promise<string> {
-        return new Promise<string>((resolve, reject) => {
-            readFile(path, (err, data) => {
-                if (err) { return reject(err); }
-                return resolve(data.toString());
-            });
-        });
-    }
+  private async globFind(workspaceFolder: vscode.WorkspaceFolder, fileName: string, filePath: string): Promise<Set<string>> {
+    return await new Promise<Set<string>>((resolve) => {
+      glob(
+        `${filePath}/${fileName}`,
+        {
+          cwd: workspaceFolder.uri.fsPath,
+          dot: true,
+          ignore: this.configStore.get(workspaceFolder)?.ignoredPathGlobs,
+          realpath: true,
+          strict: false
+        },
+        (err, files) => {
+          if (!files || files.length === 0) {
+            // Show any errors if no file was found.
+            if (err != null) {
+              void vscode.window.showWarningMessage(`An error occured while looking for the coverage file ${err.message}`)
+            }
+            resolve(new Set())
+            return
+          }
+          const setFiles = new Set<string>()
+          files.forEach((file) => setFiles.add(file))
+          resolve(setFiles)
+        }
+      )
+    })
+  }
+
+  private async load(path: string): Promise<string> {
+    return await new Promise<string>((resolve, reject) => {
+      readFile(path, (err, data) => {
+        if (err != null) {
+          reject(err)
+          return
+        }
+        resolve(data.toString())
+      })
+    })
+  }
 }

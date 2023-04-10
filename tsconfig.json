@@ -1,18 +1,14 @@
 {
-	"compilerOptions": {
-		"module": "commonjs",
-		"target": "es6",
-		"outDir": "out",
-        "alwaysStrict": true,
-		"lib": [
-			"es6"
-		],
-		"sourceMap": true,
-		"rootDir": "src",
-        "strictNullChecks": true
-	},
-	"exclude": [
-		"node_modules",
-		".vscode-test",
-	]
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "alwaysStrict": true,
+    "target": "ESNext",
+    "lib": ["es6"],
+    "sourceMap": true,
+    "rootDir": "src",
+    "strictNullChecks": true
+  },
+  "exclude": ["node_modules", ".vscode-test"]
 }
