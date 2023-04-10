@@ -17,11 +17,9 @@ jobs:
         with:
           node-version: 18
       - name: "Install dependencies"
-        run: 
+        run: |
           npm install -g yarn
           yarn install
-          yarn install -g vsce
-          yarn install -g ovsx
       - name: "Read Package.json"
         id: read_packageJson
         run: |
@@ -41,11 +39,13 @@ jobs:
         id: set_vsixPath
         run: echo "::set-output name=vsixPath::${{ steps.parse_packageJson.outputs.name }}-${{ steps.parse_packageJson.outputs.version }}.vsix"
       - name: "Package"
-        run: vsce package --out ${{ steps.set_vsixPath.outputs.vsixPath }}
+        run: |
+          yarn build:prod
+          yarn vsce package --out ${{ steps.set_vsixPath.outputs.vsixPath }}
       - name: "Publish to VSCode Marketplace"
-        run: vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --packagePath "${{ steps.set_vsixPath.outputs.vsixPath }}"
+        run: yarn vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --packagePath "${{ steps.set_vsixPath.outputs.vsixPath }}"
       - name: "Publish to Open-VSX"
-        run: npx ovsx publish "${{ steps.set_vsixPath.outputs.vsixPath }}" --pat ${{ secrets.OPEN_VSX_TOKEN }}
+        run: yarn ovsx publish "${{ steps.set_vsixPath.outputs.vsixPath }}" --pat ${{ secrets.OPEN_VSX_TOKEN }}
       - name: "Create Tag"
         id: create_tag
         run: |
