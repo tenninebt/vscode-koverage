@@ -1,7 +1,7 @@
 import { parseContent as parseContentClover } from "@cvrg-report/clover-json"
 import type * as vscodeLogging from "@vscode-logging/logger"
 import { parseContent as coberturaJson } from "@cvrg-report/cobertura-json"
-import { parseContent as jacocoJson } from "@cvrg-report/jacoco-json"
+import jacocoJson from "@cvrg-report/jacoco-json"
 import { type Section as CoverageSection, source } from "lcov-parse"
 import * as iopath from "path"
 import type * as vscode from "vscode"
@@ -135,15 +135,15 @@ export class CoverageParser {
         }
       }
 
-      try {
-        jacocoJson.parseContent(xmlFile, (err: any, data: any[]) => {
-          checkError(err)
+      jacocoJson
+        .parseContent(xmlFile)
+        .then((data: any[]) => {
           const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
           resolve(sections)
         })
-      } catch (error) {
-        checkError(error)
-      }
+        .catch((error: unknown) => {
+          checkError(error as Error)
+        })
     })
   }
 
