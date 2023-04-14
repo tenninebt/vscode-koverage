@@ -126,25 +126,15 @@ export class CoverageParser {
   }
 
   private async xmlExtractJacoco(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, CoverageSection>> {
-    return await new Promise<Map<string, CoverageSection>>((resolve, reject) => {
-      const checkError = (err: Error): void => {
-        if (err) {
-          err.message = `filename: ${filename} ${err.message}`
-          this.handleError("jacoco-parse", err)
-          resolve(new Map<string, CoverageSection>())
-        }
-      }
-
-      jacocoJson
-        .parseContent(xmlFile)
-        .then((data: any[]) => {
-          const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
-          resolve(sections)
-        })
-        .catch((error: unknown) => {
-          checkError(error as Error)
-        })
-    })
+    try {
+      const data = await jacocoJson.parseContent(xmlFile)
+      const sections = this.convertSectionsToMap(workspaceFolder, filename, data)
+      return sections
+    } catch (error: unknown) {
+      const message = `filename: ${filename} ${(error as Error).message}`
+      this.handleError("jacoco-parse", new Error(message))
+      return new Map<string, CoverageSection>()
+    }
   }
 
   private async xmlExtractClover(workspaceFolder: vscode.WorkspaceFolder, filename: string, xmlFile: string): Promise<Map<string, CoverageSection>> {
