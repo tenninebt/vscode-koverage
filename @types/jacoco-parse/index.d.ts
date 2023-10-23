@@ -1,7 +1,7 @@
 declare namespace parse {
     function parseContent(
         str: string,
-        cb: (err: Error, data: Array<Section>) => void
+        cb: (err: Error, data: Section[]) => void
     ): void
 
     interface LineDetail {
@@ -23,19 +23,19 @@ declare namespace parse {
     }
 
     interface Lines {
-        details: Array<LineDetail>,
+        details: LineDetail[],
         hit: number,
         found: number
     }
 
     interface Branches {
-        details: Array<BranchDetail>,
+        details: BranchDetail[],
         hit: number,
         found: number
     }
 
     interface Functions {
-        details: Array<FunctionDetail>,
+        details: FunctionDetail[],
         hit: number,
         found: number
     }
@@ -49,6 +49,6 @@ declare namespace parse {
     }
 }
 
-declare module "jacoco-parse" {
+declare module "@7sean68/jacoco-parse" {
     export = parse;
 }
