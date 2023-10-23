@@ -124,11 +124,10 @@
     "build:prod": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "build:watch": "webpack --mode development --watch",
-    "compile": "swc .",
+    "compile": "tsc",
     "lint": "eslint ./src"
   },
   "devDependencies": {
-    "@swc/core": "^1.3.46",
     "@types/glob": "^8.1.0",
     "@types/node": "^18.15.11",
     "@types/vscode": "^1.76.0",
@@ -141,8 +140,6 @@
     "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1",
     "ovsx": "^0.8.0",
-    "swc": "^1.0.11",
-    "swc-loader": "^0.2.3",
     "typescript": "^5.0.3",
     "vscode-test": "^1.3.0",
     "webpack": "^5.74.0",

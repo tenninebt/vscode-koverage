@@ -3,11 +3,11 @@ import * as fs from "fs"
 import * as iopath from "path"
 import * as cp from "child_process"
 import * as vscode from "vscode"
-import { type ConfigStore } from "./config-store"
-import { type CoverageParser } from "./coverage-parser"
-import { type FilesLoader } from "./files-loader"
+import { type ConfigStore } from "./ConfigStore"
+import { type CoverageParser } from "./CoverageParser"
+import { type FilesLoader } from "./FilesLoader"
 import { type Section as CoverageSection } from "lcov-parse"
-import { WorkspaceFolderCoverage } from "./workspace-folder-coverage-file"
+import { WorkspaceFolderCoverage } from "./WorkspaceFolderCoverageFile"
 
 export class FileCoverageDataProvider implements vscode.TreeDataProvider<CoverageNode>, vscode.Disposable {
   private coverageWatcher: vscode.FileSystemWatcher
@@ -80,7 +80,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     }
     if (element == null) {
       return this.getIndexedCoverageData().then((indexedCoverageData) => {
-        return indexedCoverageData.get(this.rootNodeKey)?.children
+        return indexedCoverageData.get(this.rootNodeKey)?.children ?? []
       })
     } else {
       return Promise.resolve(element.children.sort((a, b) => a.path.localeCompare(b.path)))
@@ -239,7 +239,7 @@ enum CoverageLevel {
 }
 
 class CoverageLevelThresholds {
-  constructor(public readonly sufficientCoverageThreshold: number, public readonly lowCoverageThreshold: number) {}
+  constructor(public readonly sufficientCoverageThreshold: number, public readonly lowCoverageThreshold: number) { }
 }
 export abstract class BaseNode extends vscode.TreeItem {
   constructor(
@@ -295,8 +295,8 @@ export abstract class CoverageNode extends BaseNode {
       this.getCoveragePercent() >= this.coverageLevelThresholds.sufficientCoverageThreshold
         ? CoverageLevel.High
         : this.getCoveragePercent() >= this.coverageLevelThresholds.lowCoverageThreshold
-        ? CoverageLevel.Medium
-        : CoverageLevel.Low
+          ? CoverageLevel.Medium
+          : CoverageLevel.Low
     return coverageLevel
   }
 

@@ -5,10 +5,16 @@
     "esModuleInterop": true,
     "alwaysStrict": true,
     "target": "ESNext",
-    "lib": ["es6"],
+    "lib": [
+      "es6"
+    ],
     "sourceMap": true,
     "rootDir": "src",
+    "outDir": "dist",
     "strictNullChecks": true
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "exclude": [
+    "node_modules",
+    ".vscode-test"
+  ]
 }

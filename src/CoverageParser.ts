@@ -6,8 +6,8 @@ import { type Section as CoverageSection, source } from "lcov-parse"
 import clover from "@cvrg-report/clover-json"
 import cobertura from "cobertura-parse"
 import jacoco from "@7sean68/jacoco-parse"
-import { CoverageFile, CoverageType } from "./coverage-file"
-import { WorkspaceFolderCoverage, type WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file"
+import { CoverageFile, CoverageType } from "./CoverageFile"
+import { WorkspaceFolderCoverage, type WorkspaceFolderCoverageFiles } from "./WorkspaceFolderCoverageFile"
 
 type CoverageFormat = "lcov-parse" | "clover-parse" | "jacoco-parse" | "cobertura-parse"
 export class CoverageParser {

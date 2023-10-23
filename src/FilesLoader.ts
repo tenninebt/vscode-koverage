@@ -2,11 +2,11 @@ import type * as vscodeLogging from "@vscode-logging/logger"
 import { glob } from "glob"
 import { readFile } from "fs"
 import * as vscode from "vscode"
-import { type ConfigStore } from "./config-store"
-import { WorkspaceFolderCoverageFile, WorkspaceFolderCoverageFiles } from "./workspace-folder-coverage-file"
+import { type ConfigStore } from "./ConfigStore"
+import { WorkspaceFolderCoverageFile, WorkspaceFolderCoverageFiles } from "./WorkspaceFolderCoverageFile"
 
 export class FilesLoader {
-  constructor(private readonly configStore: ConfigStore, private readonly logger: vscodeLogging.IVSCodeExtLogger) {}
+  constructor(private readonly configStore: ConfigStore, private readonly logger: vscodeLogging.IVSCodeExtLogger) { }
 
   /**
    * Takes files and converts to data strings for coverage consumption
