@@ -1,18 +1,26 @@
 import type * as vscodeLogging from "@vscode-logging/logger"
 import * as fs from "fs"
 import * as iopath from "path"
-import * as cp from "child_process"
+import * as childProcess from "child_process"
 import * as vscode from "vscode"
 import { type ConfigStore } from "./ConfigStore"
 import { type CoverageParser } from "./CoverageParser"
 import { type FilesLoader } from "./FilesLoader"
 import { type Section as CoverageSection } from "lcov-parse"
 import { WorkspaceFolderCoverage } from "./WorkspaceFolderCoverageFile"
+import { type Subscription, Subject, EMPTY, Observable, throttleTime, merge, map, share } from "rxjs"
+import { type BaseNode, type CoverageNode, RootCoverageNode, FolderCoverageNode, FileCoverageNode } from "./TreeNodes"
+import { CoverageLevelThresholds } from "./CoverageLevel"
+
+type RefreshReason = "<RefreshCommand>" | "<ConfigUpdated>" | "<CoverageCreated>" | "<CoverageUpdated>" | "<CoverageDeleted>"
 
 export class FileCoverageDataProvider implements vscode.TreeDataProvider<CoverageNode>, vscode.Disposable {
-  private coverageWatcher: vscode.FileSystemWatcher
 
-  private readonly rootNodeKey: string = ""
+  private readonly rootNodeKey: string
+
+  private readonly refreshSink: Subject<RefreshReason>
+  private readonly refreshObservable: Observable<RefreshReason>
+  private readonly refreshSubscription: Subscription
 
   constructor(
     private readonly configStore: ConfigStore,
@@ -31,49 +39,24 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     if (filesLoader === null || filesLoader === undefined) {
       throw new Error("filesLoader must be defined")
     }
-    this.listenToFileSystem()
-    this.listenToConfigChanges()
-  }
 
-  listenToConfigChanges(): void {
-    this.configStore.subscribe(() => {
-      this.refresh("<ConfigChanged>")
+    this.rootNodeKey = ""
+
+    this.refreshSink = new Subject<RefreshReason>()
+    this.refreshObservable = merge(this.refreshSink, this.getConfigObservable(), this.getCoverageObservable())
+      .pipe(throttleTime(3000))
+
+    this.refreshSubscription = this.refreshObservable.subscribe((reason) => {
+      this.logger.info(`Refreshing due to ${reason}...`)
+      this._onDidChangeTreeData.fire(undefined)
     })
   }
 
-  dispose(): void {
-    this.coverageWatcher?.dispose()
-  }
-
-  private listenToFileSystem(): void {
-    if (vscode.workspace.workspaceFolders == null) {
-      // vscode.window.showInformationMessage('No file coverage in empty workspace');
-      return
-    }
-    for (const workspaceFolder of vscode.workspace.workspaceFolders) {
-      const searchPattern = iopath.join(
-        workspaceFolder.uri.fsPath,
-        `**${iopath.sep}{${this.configStore.get(workspaceFolder)?.coverageFilePaths?.join(",")}}${iopath.sep}**}`
-      )
-      this.logger.debug(`createFileSystemWatcher(Pattern = ${searchPattern})`)
-      this.coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern)
-      this.coverageWatcher.onDidChange(() => {
-        this.refresh("<CoverageChanged>")
-      })
-      this.coverageWatcher.onDidCreate(() => {
-        this.refresh("<CoverageCreated>")
-      })
-      this.coverageWatcher.onDidDelete(() => {
-        this.refresh("<CoverageDeleted>")
-      })
-    }
-  }
-
-  getTreeItem(element: CoverageNode): vscode.TreeItem {
+  public getTreeItem(element: CoverageNode): vscode.TreeItem {
     return element
   }
 
-  getChildren(element?: CoverageNode): Thenable<CoverageNode[]> {
+  public getChildren(element?: CoverageNode): Thenable<CoverageNode[]> {
     if (vscode.workspace.workspaceFolders == null) {
       void vscode.window.showInformationMessage("No file coverage in empty workspace")
       return Promise.resolve([])
@@ -85,6 +68,10 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     } else {
       return Promise.resolve(element.children.sort((a, b) => a.path.localeCompare(b.path)))
     }
+  }
+
+  public forceRefresh(reason: RefreshReason): void {
+    this.refreshSink.next(reason)
   }
 
   public async generateCoverage(): Promise<string> {
@@ -112,7 +99,7 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
           // eslint-disable-next-line @typescript-eslint/naming-convention, promise/param-names
           const progressPromise = new Promise<string>((inner_resolve, inner_reject) => {
-            cp.exec(coverageCommand, { cwd: projectPath }, (err, stdout, stderr) => {
+            childProcess.exec(coverageCommand, { cwd: projectPath }, (err, stdout, stderr) => {
               if (err != null) {
                 logger.error(`Error running coverage command: ${err.message}\n${stderr}`)
                 inner_reject(err.message)
@@ -127,6 +114,41 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
         return (await Promise.all(promises)).join("\n")
       }
     )
+  }
+
+  private getConfigObservable(): Observable<RefreshReason> {
+    return this.configStore.configChangedNotifier.pipe<RefreshReason>(map(() => "<ConfigUpdated>"))
+  }
+
+  private getCoverageObservable(): Observable<RefreshReason> {
+    if (vscode.workspace.workspaceFolders == null) {
+      this.logger.debug("No file coverage in empty workspace")
+      return EMPTY
+    }
+    return merge(
+      ...vscode.workspace.workspaceFolders.map((workspaceFolder) => {
+        return new Observable<RefreshReason>((observer) => {
+          const searchPattern = iopath.join(
+            workspaceFolder.uri.fsPath,
+            `**${iopath.sep}{${this.configStore.get(workspaceFolder)?.coverageFilePaths?.join(",")}}${iopath.sep}**}`
+          )
+          this.logger.info(`createFileSystemWatcher(Pattern = ${searchPattern})`)
+          const coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern)
+          const fileWatcherEvents = new Observable<RefreshReason>(observer => {
+            coverageWatcher.onDidCreate(() => observer.next("<CoverageCreated>"))
+            coverageWatcher.onDidChange(() => observer.next("<CoverageUpdated>"))
+            coverageWatcher.onDidDelete(() => observer.next("<CoverageDeleted>"))
+          })
+          const subscription = fileWatcherEvents.subscribe(observer)
+          return () => {
+            this.logger.info(`Dispose FileSystemWatcher(Pattern = ${searchPattern})`)
+            subscription.unsubscribe()
+            coverageWatcher.dispose()
+          }
+        })
+      })
+    ).pipe(share())
+
   }
 
   private async getRawCoverageData(): Promise<Set<WorkspaceFolderCoverage>> {
@@ -223,144 +245,12 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     )
   }
 
+  public dispose(): void {
+    this.refreshSubscription.unsubscribe()
+  }
+
   private readonly _onDidChangeTreeData: vscode.EventEmitter<CoverageNode | undefined> = new vscode.EventEmitter<CoverageNode | undefined>()
   readonly onDidChangeTreeData: vscode.Event<CoverageNode | undefined> = this._onDidChangeTreeData.event
-
-  refresh(reason: string): void {
-    this.logger.debug(`Refreshing due to ${reason}...`)
-    this._onDidChangeTreeData.fire(undefined)
-  }
 }
 
-enum CoverageLevel {
-  Low = "low",
-  Medium = "medium",
-  High = "high"
-}
 
-class CoverageLevelThresholds {
-  constructor(public readonly sufficientCoverageThreshold: number, public readonly lowCoverageThreshold: number) { }
-}
-export abstract class BaseNode extends vscode.TreeItem {
-  constructor(
-    public readonly path: string,
-    public readonly label: string,
-    public readonly children: CoverageNode[],
-    collapsibleState: vscode.TreeItemCollapsibleState | undefined
-  ) {
-    super(label, collapsibleState)
-  }
-
-  // @ts-expect-error Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
-  public get resourceUri(): vscode.Uri {
-    return vscode.Uri.file(this.path)
-  }
-}
-
-export abstract class CoverageNode extends BaseNode {
-  constructor(
-    path: string,
-    label: string,
-    children: CoverageNode[],
-    collapsibleState: vscode.TreeItemCollapsibleState | undefined,
-    private readonly coverageLevelThresholds: CoverageLevelThresholds
-  ) {
-    super(path, label, children, collapsibleState)
-  }
-
-  private getCoveragePercent(): number {
-    return this.totalLinesCount === 0 ? 100 : (this.coveredLinesCount / this.totalLinesCount) * 100
-  }
-
-  abstract get totalLinesCount(): number
-
-  abstract get coveredLinesCount(): number
-
-  // @ts-expect-error Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
-  get tooltip(): string {
-    return `${this.label}: ${this.formatCoverage()}`
-  }
-
-  // @ts-expect-error Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
-  get description(): string {
-    return this.formatCoverage()
-  }
-
-  private formatCoverage(): string {
-    return `${+this.getCoveragePercent().toFixed(1)}%`
-  }
-
-  private getCoverageLevel(): CoverageLevel {
-    const coverageLevel =
-      this.getCoveragePercent() >= this.coverageLevelThresholds.sufficientCoverageThreshold
-        ? CoverageLevel.High
-        : this.getCoveragePercent() >= this.coverageLevelThresholds.lowCoverageThreshold
-          ? CoverageLevel.Medium
-          : CoverageLevel.Low
-    return coverageLevel
-  }
-
-  // @ts-expect-error Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
-  get iconPath(): { light: string; dark: string } {
-    const light = iopath.join(__dirname, "..", "resources", "light", `${this.getCoverageLevel().toString()}.svg`)
-    const dark = iopath.join(__dirname, "..", "resources", "dark", `${this.getCoverageLevel().toString()}.svg`)
-    return {
-      light,
-      dark
-    }
-  }
-}
-
-class RootCoverageNode extends BaseNode {
-  constructor(path: string, label: string, children: CoverageNode[] = []) {
-    super(path, label, children, vscode.TreeItemCollapsibleState.Collapsed)
-  }
-
-  get totalLinesCount(): number {
-    let sum = 0
-    this.children.forEach((n) => (sum += n.totalLinesCount))
-    return sum
-  }
-
-  get coveredLinesCount(): number {
-    let sum = 0
-    this.children.forEach((n) => (sum += n.coveredLinesCount))
-    return sum
-  }
-}
-
-class FolderCoverageNode extends CoverageNode {
-  constructor(path: string, label: string, children: CoverageNode[] = [], coverageLevelThresholds: CoverageLevelThresholds) {
-    super(path, label, children, vscode.TreeItemCollapsibleState.Collapsed, coverageLevelThresholds)
-  }
-
-  get totalLinesCount(): number {
-    let sum = 0
-    this.children.forEach((n) => (sum += n.totalLinesCount))
-    return sum
-  }
-
-  get coveredLinesCount(): number {
-    let sum = 0
-    this.children.forEach((n) => (sum += n.coveredLinesCount))
-    return sum
-  }
-}
-
-class FileCoverageNode extends CoverageNode {
-  constructor(
-    path: string,
-    label: string,
-    coverageLevelThresholds: CoverageLevelThresholds,
-    public readonly totalLinesCount: number,
-    public readonly coveredLinesCount: number
-  ) {
-    super(path, label, [], vscode.TreeItemCollapsibleState.None, coverageLevelThresholds)
-    this.contextValue = FileCoverageNode.name
-    this.command = {
-      command: "vscode.open",
-      title: "Open",
-      arguments: [vscode.Uri.file(this.path)]
-    }
-  }
-}

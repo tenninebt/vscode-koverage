@@ -6,6 +6,8 @@ export class ConfigStore {
   private readonly configurationKey: string = "koverage"
 
   private readonly _configChangedNotifier: rx.Subject<void>
+  public readonly configChangedNotifier: rx.Observable<void>
+
   private readonly _perFolderConfig: Map<vscode.Uri, rx.BehaviorSubject<Config>>
   public get(workspaceFolder: vscode.WorkspaceFolder): Config {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -14,6 +16,7 @@ export class ConfigStore {
 
   constructor(private readonly logger: vscodeLogging.IVSCodeExtLogger) {
     this._configChangedNotifier = new rx.Subject<void>()
+    this.configChangedNotifier = this._configChangedNotifier.asObservable()
     this._perFolderConfig = new Map<vscode.Uri, rx.BehaviorSubject<Config>>()
 
     void this.readConfig()
@@ -92,10 +95,6 @@ export class ConfigStore {
       lowCoverageThreshold,
       sufficientCoverageThreshold
     })
-  }
-
-  public subscribe(next?: () => void, error?: (error: any) => void, complete?: () => void): rx.Subscription {
-    return this._configChangedNotifier.subscribe(next, error, complete)
   }
 }
 

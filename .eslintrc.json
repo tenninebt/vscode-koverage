@@ -1,7 +1,7 @@
 {
   "env": {
     "browser": false,
-    "es2021": true
+    "es2022": true
   },
   "extends": ["standard-with-typescript", "prettier"],
   "overrides": [],
@@ -11,7 +11,8 @@
     "project": "tsconfig.json"
   },
   "rules": {
-    "@typescript-eslint/strict-boolean-expressions": "off"
+    "@typescript-eslint/strict-boolean-expressions": "off",
+    "@typescript-eslint/no-confusing-void-expression": "off"
   },
   "ignorePatterns": ["*.js", "**/node_modules/"]
 }

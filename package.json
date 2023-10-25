@@ -5,7 +5,8 @@
   "keywords": [
     "coverage",
     "lcov",
-    "jacoco"
+    "jacoco",
+    "clover"
   ],
   "repository": "https://github.com/tenninebt/vscode-koverage",
   "description": "View the code coverage per folder/file in the test view",
@@ -31,15 +32,28 @@
           "description": "command to run to generate coverage",
           "scope": "resource"
         },
+        "koverage.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to watch the coverage files and configurations",
+          "scope": "resource"
+        },
+        "koverage.autoRefreshDebounce": {
+          "type": "number",
+          "default": 3000,
+          "description": "Auto refresh debounce interval in milliseconds",
+          "scope": "resource"
+        },
         "koverage.coverageFileNames": {
           "type": "array",
           "default": [
             "lcov.info",
             "cov.xml",
+            "clover.xml",
             "coverage.xml",
             "jacoco.xml"
           ],
-          "description": "coverage file names for the extension to automatically look for",
+          "description": "coverage file names to look for",
           "scope": "resource"
         },
         "koverage.coverageFilePaths": {
@@ -47,7 +61,7 @@
           "default": [
             "**"
           ],
-          "description": "coverage file paths for the extensions to automatically search in",
+          "description": "coverage file paths to search in",
           "scope": "resource"
         },
         "koverage.ignoredPathGlobs": {
@@ -121,10 +135,11 @@
     }
   },
   "scripts": {
+    "clean": "rm -rf dist",
+    "compile": "yarn clean && tsc",
     "build:prod": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "build:watch": "webpack --mode development --watch",
-    "compile": "tsc",
     "lint": "eslint ./src"
   },
   "devDependencies": {
@@ -140,6 +155,7 @@
     "eslint-plugin-n": "^15.7.0",
     "eslint-plugin-promise": "^6.1.1",
     "ovsx": "^0.8.0",
+    "ts-loader": "^9.5.0",
     "typescript": "^5.0.3",
     "vscode-test": "^1.3.0",
     "webpack": "^5.74.0",

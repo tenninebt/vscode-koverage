@@ -10,10 +10,14 @@ This extension adds a tree view to the test view container. It shows the coverag
 
 This extension contributes the following settings:
 
-* `koverage.coverageFileNames`: coverage file names to look for, default: ["lcov.info", "cov.xml", "coverage.xml","jacoco.xml"]
-* `koverage.coverageFilePaths`: coverage paths where coverage files are located, default: ["coverage"]
-* `koverage.lowCoverageThreshold`: Percentage under which, the coverage is considered too low (Renders as Error icon)
-* `koverage.sufficientCoverageThreshold`: Percentage above which, the coverage is considered sufficient (Renders as Success icon)
+- `koverage.coverageCommand`: Command to run to generate coverage. (Default: "")
+- `koverage.autoRefresh`: Whether to watch the coverage files and configurations. (Default: true)
+- `koverage.autoRefreshDebounce`: Auto refresh debounce interval in milliseconds. (Default: 3000)
+- `koverage.coverageFileNames`: Coverage file names to look for. (Default: ["lcov.info", "cov.xml", "coverage.xml", "jacoco.xml"])
+- `koverage.coverageFilePaths`: Coverage file paths to search in. (Default: ["**"])
+- `koverage.ignoredPathGlobs`: Ignored path globs. (Default: "**/{node_modules,venv,.venv,vendor}/**")
+- `koverage.lowCoverageThreshold`: Coverage threshold considered too low. (Default: 50)
+- `koverage.sufficientCoverageThreshold`: Coverage threshold considered sufficient. (Default: 70)
 => lowCoverageThreshold < level < sufficientCoverageThreshold is rendered as Warn icon
 
 ## Licencing

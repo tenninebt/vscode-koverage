@@ -1,7 +1,8 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode"
-import { FileCoverageDataProvider, type CoverageNode } from "./DataProvider"
+import { type CoverageNode } from "./TreeNodes";
+import { FileCoverageDataProvider } from "./DataProvider"
 import { CoverageParser } from "./CoverageParser"
 import { FilesLoader } from "./FilesLoader"
 import { ConfigStore } from "./ConfigStore"
@@ -14,7 +15,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const logger = vscodeLogging.getExtensionLogger({
     extName: "Koverage",
     level: "debug", // See LogLevel type in @vscode-logging/types for possible logLevels
-    logPath: context.logPath, // The logPath is only available from the `vscode.ExtensionContext`
+    logPath: context.logUri.fsPath, // The logPath is only available from the `vscode.ExtensionContext`
     logOutputChannel: outputChannel, // OutputChannel for the logger
     sourceLocationTracking: false
   })
@@ -34,7 +35,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // --- Commands
   const refresh = vscode.commands.registerCommand("koverage.refresh", () => {
-    fileCoverageDataProvider.refresh("<RefreshCommand>")
+    fileCoverageDataProvider.forceRefresh("<RefreshCommand>")
   })
 
   const generateCoverage = vscode.commands.registerCommand("koverage.generate", async () => await fileCoverageDataProvider.generateCoverage())
