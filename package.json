@@ -10,7 +10,7 @@
   ],
   "repository": "https://github.com/tenninebt/vscode-koverage",
   "description": "View the code coverage per folder/file in the test view",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "engines": {
     "vscode": "^1.76.0"
   },

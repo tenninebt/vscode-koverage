@@ -4,11 +4,15 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.0.15](https://github.com/tenninebt/vscode-koverage/compare/0.0.14...0.0.15) (2023-10-25)
+- Implement auto refresh debounce [#41](https://github.com/tenninebt/vscode-koverage/issues/41)
+- Fix parse jacoco/clover/cobertura [#33](https://github.com/tenninebt/vscode-koverage/issues/33)
+
 ## [0.0.14](https://github.com/tenninebt/vscode-koverage/compare/0.0.13...0.0.14) (2023-04-10)
 - Enh [#32](https://github.com/tenninebt/vscode-koverage/pull/32): 
-    - generate coverage command
-    - support per workspace folder settings (mutli-root workspaces)
-    - bugfix [#28](https://github.com/tenninebt/vscode-koverage/pull/28)
+- generate coverage command
+- support per workspace folder settings (mutli-root workspaces)
+- bugfix [#28](https://github.com/tenninebt/vscode-koverage/pull/28)
 
 ## [0.0.13](https://github.com/tenninebt/vscode-koverage/compare/0.0.12...0.0.13) (2022-12-07)
 - Enh [#21](https://github.com/tenninebt/vscode-koverage/issues/21): unable to use absolute file paths
