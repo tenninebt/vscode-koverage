@@ -4,6 +4,9 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.0.16](https://github.com/tenninebt/vscode-koverage/compare/0.0.15...0.0.16) (2023-10-26)
+- Activate config for auto refresh debounce [#41](https://github.com/tenninebt/vscode-koverage/issues/41)
+
 ## [0.0.15](https://github.com/tenninebt/vscode-koverage/compare/0.0.14...0.0.15) (2023-10-25)
 - Implement auto refresh debounce [#41](https://github.com/tenninebt/vscode-koverage/issues/41)
 - Fix parse jacoco/clover/cobertura [#33](https://github.com/tenninebt/vscode-koverage/issues/33)
