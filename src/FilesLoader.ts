@@ -1,4 +1,4 @@
-import type * as vscodeLogging from "@vscode-logging/logger"
+import type { Logger } from "./Logger"
 import { glob } from "glob"
 import { readFile } from "fs"
 import * as vscode from "vscode"
@@ -6,7 +6,7 @@ import { type ConfigStore } from "./ConfigStore"
 import { WorkspaceFolderCoverageFile, WorkspaceFolderCoverageFiles } from "./WorkspaceFolderCoverageFile"
 
 export class FilesLoader {
-  constructor(private readonly configStore: ConfigStore, private readonly logger: vscodeLogging.IVSCodeExtLogger) { }
+  constructor(private readonly configStore: ConfigStore, private readonly logger: Logger) { }
 
   /**
    * Takes files and converts to data strings for coverage consumption
@@ -22,26 +22,28 @@ export class FilesLoader {
 
   private async loadCoverageInWorkspace(): Promise<Set<WorkspaceFolderCoverageFiles>> {
     const coverageFiles = new Map<string, WorkspaceFolderCoverageFiles>()
-    if (vscode.workspace.workspaceFolders != null) {
-      for (const workspaceFolder of vscode.workspace.workspaceFolders) {
-        const folderConfig = this.configStore.get(workspaceFolder)
-        const filesPaths = folderConfig?.coverageFilePaths ?? []
-        const fileNames = folderConfig?.coverageFileNames ?? []
-        for (const filePath of filesPaths) {
-          for (const fileName of fileNames) {
-            const coverageFileFullPath = await this.globFind(workspaceFolder, fileName, filePath)
 
-            for (const f of coverageFileFullPath) {
-              if (!coverageFiles.has(workspaceFolder.uri.fsPath)) {
-                coverageFiles.set(workspaceFolder.uri.fsPath, new WorkspaceFolderCoverageFiles(workspaceFolder))
-              }
-              coverageFiles.get(workspaceFolder.uri.fsPath)?.coverageFiles.add(new WorkspaceFolderCoverageFile(f, await this.load(f)))
+    if (!vscode.workspace.workspaceFolders) {
+      this.logger.warn("Empty workspace")
+      throw new Error("Empty workspace")
+    }
+
+    for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+      const folderConfig = this.configStore.get(workspaceFolder)
+      const filesPaths = folderConfig?.coverageFilePaths ?? []
+      const fileNames = folderConfig?.coverageFileNames ?? []
+      for (const filePath of filesPaths) {
+        for (const fileName of fileNames) {
+          const coverageFileFullPath = await this.globFind(workspaceFolder, fileName, filePath)
+
+          for (const f of coverageFileFullPath) {
+            if (!coverageFiles.has(workspaceFolder.uri.fsPath)) {
+              coverageFiles.set(workspaceFolder.uri.fsPath, new WorkspaceFolderCoverageFiles(workspaceFolder))
             }
+            coverageFiles.get(workspaceFolder.uri.fsPath)?.coverageFiles.add(new WorkspaceFolderCoverageFile(f, await this.load(f)))
           }
         }
       }
-    } else {
-      this.logger.warn("Empty workspace")
     }
 
     return new Set<WorkspaceFolderCoverageFiles>(coverageFiles.values())

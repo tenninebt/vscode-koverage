@@ -1,4 +1,4 @@
-import type * as vscodeLogging from "@vscode-logging/logger"
+import type { Logger } from "./Logger"
 import * as fs from "fs"
 import * as iopath from "path"
 import * as childProcess from "child_process"
@@ -8,7 +8,7 @@ import { type CoverageParser } from "./CoverageParser"
 import { type FilesLoader } from "./FilesLoader"
 import { type Section as CoverageSection } from "lcov-parse"
 import { WorkspaceFolderCoverage } from "./WorkspaceFolderCoverageFile"
-import { type Subscription, Subject, EMPTY, Observable, throttleTime, merge, map, share } from "rxjs"
+import * as rx from "rxjs"
 import { type BaseNode, type CoverageNode, RootCoverageNode, FolderCoverageNode, FileCoverageNode } from "./TreeNodes"
 import { CoverageLevelThresholds } from "./CoverageLevel"
 
@@ -18,15 +18,15 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
   private readonly rootNodeKey: string
 
-  private readonly refreshSink: Subject<RefreshReason>
-  private readonly refreshObservable: Observable<RefreshReason>
-  private readonly refreshSubscription: Subscription
+  private refreshSink: rx.Subject<RefreshReason>
+  private refreshObservable: rx.Observable<RefreshReason>
+  private refreshSubscription: rx.Subscription
 
   constructor(
     private readonly configStore: ConfigStore,
     private readonly coverageParser: CoverageParser,
     private readonly filesLoader: FilesLoader,
-    private readonly logger: vscodeLogging.IVSCodeExtLogger
+    private readonly logger: Logger
   ) {
     if (configStore === null || configStore === undefined) {
       throw new Error("configStore must be defined")
@@ -42,10 +42,27 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
 
     this.rootNodeKey = ""
 
-    this.refreshSink = new Subject<RefreshReason>()
-    this.refreshObservable = merge(this.refreshSink, this.getConfigObservable(), this.getCoverageObservable())
-      .pipe(throttleTime(3000))
+    this.subscripeToRefreshEvents()
+  }
 
+  private subscripeToRefreshEvents(): void {
+    if (!vscode.workspace.workspaceFolders) {
+      this.logger.warn("Empty workspace")
+      throw new Error("Empty workspace")
+    }
+    this.refreshSink = new rx.Subject<RefreshReason>()
+    const coverageObservablePerWorkspace = vscode.workspace.workspaceFolders?.map((workspaceFolder) => {
+      // Distinct debounce interval observable
+      const debounceIntervalObservable = this.configStore.getObservable(workspaceFolder).pipe(rx.map((config) => config.autoRefreshDebounce), rx.distinctUntilChanged())
+      // Swaps the source observable (throttled with the new interval instead of the old interval), seamlessly to the observers
+      const getAutoSwapObservable = rx.switchMap((throttleInterval: number) => this.getCoverageObservable(workspaceFolder).pipe(rx.throttleTime(throttleInterval)))
+      const autoSwapObservable = getAutoSwapObservable(debounceIntervalObservable)
+      // Suspends the observable if autoRefresh is disabled
+      const suspendableObservable = autoSwapObservable.pipe(rx.filter((_) => this.configStore.get(workspaceFolder).autoRefresh))
+      return suspendableObservable
+    })
+
+    this.refreshObservable = rx.merge(this.refreshSink, this.getConfigObservable(), ...coverageObservablePerWorkspace)
     this.refreshSubscription = this.refreshObservable.subscribe((reason) => {
       this.logger.info(`Refreshing due to ${reason}...`)
       this._onDidChangeTreeData.fire(undefined)
@@ -116,39 +133,34 @@ export class FileCoverageDataProvider implements vscode.TreeDataProvider<Coverag
     )
   }
 
-  private getConfigObservable(): Observable<RefreshReason> {
-    return this.configStore.configChangedNotifier.pipe<RefreshReason>(map(() => "<ConfigUpdated>"))
+  private getConfigObservable(): rx.Observable<RefreshReason> {
+    return this.configStore.ConfigChanged.pipe<RefreshReason>(rx.map(() => "<ConfigUpdated>"))
   }
 
-  private getCoverageObservable(): Observable<RefreshReason> {
-    if (vscode.workspace.workspaceFolders == null) {
+  private getCoverageObservable(workspaceFolder: vscode.WorkspaceFolder): rx.Observable<RefreshReason> {
+    if (!workspaceFolder) {
       this.logger.debug("No file coverage in empty workspace")
-      return EMPTY
+      return rx.EMPTY
     }
-    return merge(
-      ...vscode.workspace.workspaceFolders.map((workspaceFolder) => {
-        return new Observable<RefreshReason>((observer) => {
-          const searchPattern = iopath.join(
-            workspaceFolder.uri.fsPath,
-            `**${iopath.sep}{${this.configStore.get(workspaceFolder)?.coverageFilePaths?.join(",")}}${iopath.sep}**}`
-          )
-          this.logger.info(`createFileSystemWatcher(Pattern = ${searchPattern})`)
-          const coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern)
-          const fileWatcherEvents = new Observable<RefreshReason>(observer => {
-            coverageWatcher.onDidCreate(() => observer.next("<CoverageCreated>"))
-            coverageWatcher.onDidChange(() => observer.next("<CoverageUpdated>"))
-            coverageWatcher.onDidDelete(() => observer.next("<CoverageDeleted>"))
-          })
-          const subscription = fileWatcherEvents.subscribe(observer)
-          return () => {
-            this.logger.info(`Dispose FileSystemWatcher(Pattern = ${searchPattern})`)
-            subscription.unsubscribe()
-            coverageWatcher.dispose()
-          }
-        })
+    return new rx.Observable<RefreshReason>((observer) => {
+      const searchPattern = iopath.join(
+        workspaceFolder.uri.fsPath,
+        `**${iopath.sep}{${this.configStore.get(workspaceFolder)?.coverageFilePaths?.join(",")}}${iopath.sep}**}`
+      )
+      this.logger.info(`createFileSystemWatcher(Pattern = ${searchPattern})`)
+      const coverageWatcher = vscode.workspace.createFileSystemWatcher(searchPattern)
+      const fileWatcherEvents = new rx.Observable<RefreshReason>(observer => {
+        coverageWatcher.onDidCreate(() => observer.next("<CoverageCreated>"))
+        coverageWatcher.onDidChange(() => observer.next("<CoverageUpdated>"))
+        coverageWatcher.onDidDelete(() => observer.next("<CoverageDeleted>"))
       })
-    ).pipe(share())
-
+      const subscription = fileWatcherEvents.subscribe(observer)
+      return () => {
+        this.logger.info(`Dispose FileSystemWatcher(Pattern = ${searchPattern})`)
+        subscription.unsubscribe()
+        coverageWatcher.dispose()
+      }
+    }).pipe(rx.share())
   }
 
   private async getRawCoverageData(): Promise<Set<WorkspaceFolderCoverage>> {

@@ -1,7 +1,7 @@
 import util from "util"
 import * as iopath from "path"
 import type * as vscode from "vscode"
-import type * as vscodeLogging from "@vscode-logging/logger"
+import type { Logger } from "./Logger"
 import { type Section as CoverageSection, source } from "lcov-parse"
 import clover from "@cvrg-report/clover-json"
 import cobertura from "cobertura-parse"
@@ -11,7 +11,7 @@ import { WorkspaceFolderCoverage, type WorkspaceFolderCoverageFiles } from "./Wo
 
 type CoverageFormat = "lcov-parse" | "clover-parse" | "jacoco-parse" | "cobertura-parse"
 export class CoverageParser {
-  constructor(private readonly logger: vscodeLogging.IVSCodeExtLogger) { }
+  constructor(private readonly logger: Logger) { }
 
   /**
    * Extracts coverage sections of type xml and lcov
