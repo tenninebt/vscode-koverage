@@ -13,10 +13,10 @@
   },
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
-  "eslint.packageManager": "yarn",
   "conventionalCommits.scopes": [
     "config",
     "commands",
-    "parser"
-  ]
+    "parser",
+    "release"
+  ],
 }
