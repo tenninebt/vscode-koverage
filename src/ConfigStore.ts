@@ -1,7 +1,50 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import os from "os"
 import * as vscode from "vscode"
 import * as rx from "rxjs"
 import type { Logger } from "./Logger"
+import { isEmpty } from "./Utils";
+
+interface InspectReturn<T> {
+  /**
+   * The fully qualified key of the configuration value
+   */
+  key: string;
+
+  /**
+   * The default value which is used when no other value is defined
+   */
+  defaultValue?: T;
+
+  /**
+   * The global or installation-wide value.
+   */
+  globalValue?: T;
+
+  /**
+   * The workspace-specific value.
+   */
+  workspaceValue?: T;
+
+  /**
+   * The workpace-folder-specific value.
+   */
+  workspaceFolderValue?: T;
+}
+
+type ConfigValueType = string[] | string | number | boolean | undefined
+
+// T is not really constrained in the definition of inspect, weird this does not compile!
+// type ConfigItemMeta<T extends string[] | string | number | boolean> = ReturnType<vscode.WorkspaceConfiguration[`inspect<${T}>`]>
+type ConfigItemMeta<T extends ConfigValueType> = InspectReturn<T>
+
+type ConfigMeta = {
+  [P in keyof Config]: ConfigItemMeta<Config[P]>
+}
+
+type ConfigOverride = {
+  [P in keyof ConfigMeta]?: ConfigMeta[P] & { reason?: string }
+}
 
 export class ConfigStore {
   private readonly configurationKey: string = "koverage"
@@ -25,7 +68,7 @@ export class ConfigStore {
 
     // Reload the cached values if a workspace folder is added or deleted
     vscode.workspace.onDidChangeWorkspaceFolders(async (e) => {
-      this.cleanUpRemove(e.removed)
+      this.cleanUpRemovedWorkspaceFolders(e.removed)
       await this.readConfig()
     })
     // Reload the cached values if the configuration changes
@@ -36,6 +79,37 @@ export class ConfigStore {
     })
   }
 
+  // private validateInput(event: vscode.ConfigurationChangeEvent): void {
+  //   const getConfigurationKey = (property: keyof Config): string => {
+  //     return `${this.configurationKey}.${property}`;
+  //   }
+  //   const getConfigurationValue = <T extends ConfigValueType>(property: keyof Config): T | undefined => {
+  //     const koverageConfig = vscode.workspace.getConfiguration(this.configurationKey)
+  //     return koverageConfig.get<T>(property)
+  //   }
+
+  //   const sufficientCoverageThresholdKey = getConfigurationKey("sufficientCoverageThreshold");
+  //   const lowCoverageThresholdKey = getConfigurationKey("lowCoverageThreshold");
+  //   const sufficientCoverageThreshold = getConfigurationValue<number>("sufficientCoverageThreshold")
+  //   const lowCoverageThreshold = getConfigurationValue<number>("lowCoverageThreshold")
+
+  //   if (event.affectsConfiguration(sufficientCoverageThresholdKey) &&
+  //     sufficientCoverageThreshold && (sufficientCoverageThreshold <= 0 || sufficientCoverageThreshold > 100)) {
+  //     throw new InvalidInputError(`Rule: 0 < sufficientCoverageThreshold(${sufficientCoverageThreshold}) < 100`)
+  //   }
+
+  //   if (event.affectsConfiguration(lowCoverageThresholdKey) &&
+  //     lowCoverageThreshold && (lowCoverageThreshold <= 0 || lowCoverageThreshold > 100)) {
+  //     throw new InvalidInputError(`Rule: 0 <= lowCoverageThreshold(${lowCoverageThreshold}) < 99`);
+  //   }
+
+  //   if ((event.affectsConfiguration(sufficientCoverageThresholdKey) || event.affectsConfiguration(lowCoverageThresholdKey)) &&
+  //     sufficientCoverageThreshold && lowCoverageThreshold &&
+  //     sufficientCoverageThreshold < lowCoverageThreshold) {
+  //     throw new InvalidInputError(`sufficientCoverageThreshold(${sufficientCoverageThreshold}) > lowCoverageThreshold(${lowCoverageThreshold})`);
+  //   }
+  // }
+
   public getObservable(workspaceFolder: vscode.WorkspaceFolder): rx.Observable<Config> {
     return this._perFolderConfigChanged.get(workspaceFolder.uri)!.asObservable()
   }
@@ -45,7 +119,7 @@ export class ConfigStore {
   }
 
 
-  private cleanUpRemove(removed: readonly vscode.WorkspaceFolder[]): void {
+  private cleanUpRemovedWorkspaceFolders(removed: readonly vscode.WorkspaceFolder[]): void {
     removed.forEach((workspaceFolder) => {
       this._perFolderConfigChanged.get(workspaceFolder.uri)?.complete()
       this._perFolderConfigChanged.delete(workspaceFolder.uri)
@@ -63,15 +137,18 @@ export class ConfigStore {
   private async readWorkspaceConfig(workspaceFolder: vscode.WorkspaceFolder): Promise<void> {
 
     const rawConfig = vscode.workspace.getConfiguration(this.configurationKey, workspaceFolder)
-    const defaultConfig = this.getDefaultConfig(rawConfig)
-    const newConfig = this.convertConfig(rawConfig)
-    const { invalidRules, validConfig } = newConfig.validate(defaultConfig)
+    const configMeta = this.inspectConfig(rawConfig)
+    const { config: validConfig, overridenConfig } = this.convertConfig(rawConfig, configMeta)
 
     this._perFolderConfig.set(workspaceFolder.uri, validConfig)
-    if (invalidRules?.length) {
-      this.logger.warn(`Invalid configuration : \n${invalidRules.join("\n- ")}\nThe following configuration will be used :\n ${JSON.stringify(validConfig, null, 2)}`)
+    if (!isEmpty(overridenConfig)) {
+      const invalidRules = Object.values(overridenConfig).filter((c) => !!c.reason).map((c) => `${c.reason!}`)
+      const warnMessage = `Invalid configuration`
+      const warnDetails = `${invalidRules.join(`${os.EOL}`)}${os.EOL}Using defaults instead`
+      this.logger.warn(`${warnMessage}: ${os.EOL}${warnDetails}`)
+      await vscode.window.showWarningMessage(`[Koverage] ${warnMessage} ${warnDetails}`)
+      await this.publishConfigToVSCode(rawConfig, overridenConfig)
     }
-    await this.publishConfigToVSCode(rawConfig, validConfig)
     let notifier = this._perFolderConfigChanged.get(workspaceFolder.uri)
     if (!notifier) {
       notifier = new rx.Subject<Config>()
@@ -80,16 +157,16 @@ export class ConfigStore {
     notifier.next(validConfig)
   }
 
-  private getDefaultConfig(rawWorkspaceConfig: vscode.WorkspaceConfiguration): Config {
-    const coverageCommand = rawWorkspaceConfig.inspect("coverageCommand")?.defaultValue as string
-    const coverageFileNames = rawWorkspaceConfig.inspect("coverageFileNames")?.defaultValue as string[]
-    const coverageFilePaths = rawWorkspaceConfig.inspect("coverageFilePaths")?.defaultValue as string[]
-    const ignoredPathGlobs = rawWorkspaceConfig.inspect("ignoredPathGlobs")?.defaultValue as string
-    const lowCoverageThreshold = rawWorkspaceConfig.inspect("lowCoverageThreshold")?.defaultValue as number
-    const sufficientCoverageThreshold = rawWorkspaceConfig.inspect("sufficientCoverageThreshold")?.defaultValue as number
-    const autoRefresh = rawWorkspaceConfig.inspect("autoRefresh")?.defaultValue as boolean
-    const autoRefreshDebounce = rawWorkspaceConfig.inspect("autoRefreshDebounce")?.defaultValue as number
-    const defaultConfig = new Config({
+  private inspectConfig(rawWorkspaceConfig: vscode.WorkspaceConfiguration): ConfigMeta {
+    const coverageCommand = rawWorkspaceConfig.inspect<string>("coverageCommand")!
+    const autoRefresh = rawWorkspaceConfig.inspect<boolean>("autoRefresh")!
+    const autoRefreshDebounce = rawWorkspaceConfig.inspect<number>("autoRefreshDebounce")!
+    const coverageFileNames = rawWorkspaceConfig.inspect<string[]>("coverageFileNames")!
+    const coverageFilePaths = rawWorkspaceConfig.inspect<string[]>("coverageFilePaths")!
+    const ignoredPathGlobs = rawWorkspaceConfig.inspect<string>("ignoredPathGlobs")!
+    const lowCoverageThreshold = rawWorkspaceConfig.inspect<number>("lowCoverageThreshold")!
+    const sufficientCoverageThreshold = rawWorkspaceConfig.inspect<number>("sufficientCoverageThreshold")!
+    return {
       coverageCommand,
       autoRefresh,
       autoRefreshDebounce,
@@ -98,54 +175,104 @@ export class ConfigStore {
       ignoredPathGlobs,
       lowCoverageThreshold,
       sufficientCoverageThreshold
-    })
-    return defaultConfig
+    }
   }
 
-  private async publishConfigToVSCode(updatedRawConfig: vscode.WorkspaceConfiguration, config: Config): Promise<void> {
-    await updatedRawConfig.update("coverageCommand", config.coverageCommand)
-    await updatedRawConfig.update("autoRefresh", config.autoRefresh)
-    await updatedRawConfig.update("autoRefreshDebounce", config.autoRefreshDebounce)
-    await updatedRawConfig.update("coverageFileNames", config.coverageFileNames)
-    await updatedRawConfig.update("coverageFilePaths", config.coverageFilePaths)
-    await updatedRawConfig.update("lowCoverageThreshold", config.lowCoverageThreshold)
-    await updatedRawConfig.update("sufficientCoverageThreshold", config.sufficientCoverageThreshold)
+  private async publishConfigToVSCode(updatedRawConfig: vscode.WorkspaceConfiguration, overridenConfig: ConfigOverride): Promise<void> {
+
+    function getConfigurationTarget<T extends ConfigValueType>(configMeta: ConfigItemMeta<T>): vscode.ConfigurationTarget | undefined {
+      return configMeta.workspaceFolderValue ? vscode.ConfigurationTarget.WorkspaceFolder :
+        configMeta.workspaceValue ? vscode.ConfigurationTarget.Workspace :
+          configMeta.globalValue ? vscode.ConfigurationTarget.Global :
+            undefined
+    }
+
+    for (const [key, value] of Object.entries(overridenConfig)) {
+      if (value) {
+        const target = getConfigurationTarget<typeof value.defaultValue>(value)
+        if (target) {
+          await updatedRawConfig.update(key, value.defaultValue, target)
+        }
+      }
+    }
   }
 
 
-  private convertConfig(workspaceConfiguration: vscode.WorkspaceConfiguration): Config {
-    // Basic configurations
-    const coverageCommand = workspaceConfiguration.get("coverageCommand") as string
-    const coverageFileNames = workspaceConfiguration.get("coverageFileNames") as string[]
-    const coverageFilePaths = workspaceConfiguration.get("coverageFilePaths") as string[]
-    const ignoredPathGlobs = workspaceConfiguration.get("ignoredPathGlobs") as string
-    const lowCoverageThreshold = workspaceConfiguration.get("lowCoverageThreshold") as number
-    const sufficientCoverageThreshold = workspaceConfiguration.get("sufficientCoverageThreshold") as number
-    const autoRefresh = workspaceConfiguration.get("autoRefresh") as boolean
-    const autoRefreshDebounce = workspaceConfiguration.get("autoRefreshDebounce") as number
-    return new Config({
-      coverageCommand,
-      autoRefresh,
-      autoRefreshDebounce,
-      coverageFileNames,
-      coverageFilePaths,
-      ignoredPathGlobs,
-      lowCoverageThreshold,
-      sufficientCoverageThreshold
+  private convertConfig(rawConfig: vscode.WorkspaceConfiguration, configMeta: ConfigMeta): { config: Config; overridenConfig: ConfigOverride } {
+
+    let config: Config = new Config({
+      coverageCommand: rawConfig.get<string>("coverageCommand") ?? configMeta.coverageCommand?.defaultValue as string,
+      autoRefresh: rawConfig.get<boolean>("autoRefresh") ?? configMeta.autoRefresh?.defaultValue as boolean,
+      autoRefreshDebounce: rawConfig.get<number>("autoRefreshDebounce") ?? configMeta.autoRefreshDebounce?.defaultValue as number,
+      coverageFileNames: rawConfig.get<string[]>("coverageFileNames") ?? configMeta.coverageFileNames?.defaultValue as string[],
+      coverageFilePaths: rawConfig.get<string[]>("coverageFilePaths") ?? configMeta.coverageFilePaths?.defaultValue as string[],
+      ignoredPathGlobs: rawConfig.get<string>("ignoredPathGlobs") ?? configMeta.ignoredPathGlobs?.defaultValue as string,
+      lowCoverageThreshold: rawConfig.get<number>("lowCoverageThreshold") ?? configMeta.lowCoverageThreshold?.defaultValue as number,
+      sufficientCoverageThreshold: rawConfig.get<number>("sufficientCoverageThreshold") ?? configMeta.sufficientCoverageThreshold?.defaultValue as number,
     })
+
+    let overridenConfig: ConfigOverride = {}
+    if (config.sufficientCoverageThreshold <= 0 || config.sufficientCoverageThreshold > 100) {
+      overridenConfig = {
+        ...overridenConfig,
+        sufficientCoverageThreshold: {
+          ...configMeta.sufficientCoverageThreshold,
+          reason: `Rule: 0 < sufficientCoverageThreshold(${config.sufficientCoverageThreshold}) < 100`
+        }
+      }
+      config = {
+        ...config,
+        sufficientCoverageThreshold: configMeta.sufficientCoverageThreshold.defaultValue!
+      }
+    }
+    if (config.lowCoverageThreshold < 0 || config.lowCoverageThreshold >= 99) {
+      overridenConfig = {
+        ...overridenConfig,
+        sufficientCoverageThreshold: {
+          ...configMeta.lowCoverageThreshold,
+          reason: `Rule: 0 <= lowCoverageThreshold(${config.lowCoverageThreshold}) < 99`
+        }
+      }
+      config = {
+        ...config,
+        lowCoverageThreshold: configMeta.lowCoverageThreshold.defaultValue!
+      }
+    }
+    if (config.sufficientCoverageThreshold < config.lowCoverageThreshold) {
+      overridenConfig = {
+        ...overridenConfig,
+        sufficientCoverageThreshold: {
+          ...configMeta.sufficientCoverageThreshold,
+          reason: `Rule: sufficientCoverageThreshold(${config.sufficientCoverageThreshold}) > lowCoverageThreshold(${config.lowCoverageThreshold})`
+        },
+        lowCoverageThreshold: {
+          ...configMeta.lowCoverageThreshold,
+        }
+      }
+      config = {
+        ...config,
+        sufficientCoverageThreshold: configMeta.sufficientCoverageThreshold.defaultValue!,
+        lowCoverageThreshold: configMeta.lowCoverageThreshold.defaultValue!
+      }
+    }
+    return {
+      config,
+      overridenConfig
+    }
+
   }
 }
 
 export class Config {
 
-  public coverageCommand: string
-  public autoRefresh: boolean
-  public autoRefreshDebounce: number
-  public coverageFileNames: string[]
-  public coverageFilePaths: string[]
-  public ignoredPathGlobs: string
-  public lowCoverageThreshold: number
-  public sufficientCoverageThreshold: number
+  public readonly coverageCommand: string
+  public readonly autoRefresh: boolean
+  public readonly autoRefreshDebounce: number
+  public readonly coverageFileNames: string[]
+  public readonly coverageFilePaths: string[]
+  public readonly ignoredPathGlobs: string
+  public readonly lowCoverageThreshold: number
+  public readonly sufficientCoverageThreshold: number
 
   constructor({
     coverageCommand,
@@ -179,40 +306,6 @@ export class Config {
     // Make filePaths unique
     this.coverageFilePaths = [...new Set(this.coverageFilePaths)]
 
-  }
-
-  public validate(defaultValues: Config): { validConfig: Config; invalidRules: string[] } {
-    let validConfig = {
-      ...this
-    }
-    const invalidRules: string[] = []
-
-    if (this.sufficientCoverageThreshold <= 0 || this.sufficientCoverageThreshold > 100) {
-      validConfig = {
-        ...validConfig,
-        sufficientCoverageThreshold: defaultValues.sufficientCoverageThreshold
-      }
-      invalidRules.push(`Rule: 0 < sufficientCoverageThreshold(${this.sufficientCoverageThreshold}) < 100`)
-    }
-    if (this.lowCoverageThreshold < 0 || this.lowCoverageThreshold >= 99) {
-      validConfig = {
-        ...validConfig,
-        lowCoverageThreshold: defaultValues.lowCoverageThreshold
-      }
-      invalidRules.push(`Rule: 0 <= lowCoverageThreshold(${this.lowCoverageThreshold}) < 99`)
-    }
-    if (this.sufficientCoverageThreshold < this.lowCoverageThreshold) {
-      validConfig = {
-        ...validConfig,
-        lowCoverageThreshold: defaultValues.lowCoverageThreshold,
-        sufficientCoverageThreshold: defaultValues.sufficientCoverageThreshold
-      }
-      invalidRules.push(`sufficientCoverageThreshold(${this.sufficientCoverageThreshold}) > lowCoverageThreshold(${this.lowCoverageThreshold})`)
-    }
-    return {
-      validConfig,
-      invalidRules
-    }
   }
 }
 
