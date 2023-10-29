@@ -5,3 +5,4 @@ node_modules
 *.vsix
 *.secrets
 .DS_Store
+.yarn/install-state.gz

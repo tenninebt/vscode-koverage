@@ -164,7 +164,6 @@
   "dependencies": {
     "@7sean68/jacoco-parse": "2.2.0",
     "@cvrg-report/clover-json": "0.3.2",
-    "@vscode-logging/logger": "^1.2.3",
     "cobertura-parse": "fschwaiger/cobertura-parse#82b0333cb1580f6f337b5d44b04e2f5ca8711b7e",
     "lcov-parse": "1.0.0",
     "rxjs": "^7.8.0"
@@ -173,5 +172,6 @@
     "minimist": "^1.2.8",
     "mocha": "^10.2.0",
     "mkdirp": "^3.0.1"
-  }
+  },
+  "packageManager": "yarn@4.0.1"
 }
