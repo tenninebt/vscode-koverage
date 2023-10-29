@@ -4,30 +4,33 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.0.18](https://github.com/tenninebt/vscode-koverage/compare/0.0.17...0.0.18) (2023-10-29)
+## [0.0.19](https://github.com/tenninebt/vscode-koverage/compare/v0.0.18...v0.0.19) (2023-10-29)
+- chore(changelog): :memo: fix change log links
+
+## [0.0.18](https://github.com/tenninebt/vscode-koverage/compare/v0.0.17...v0.0.18) (2023-10-29)
 - fix(config): :bug: configuration update does not trigger refresh any more
 
-## [0.0.17](https://github.com/tenninebt/vscode-koverage/compare/0.0.16...0.0.17) (2023-10-29)
+## [0.0.17](https://github.com/tenninebt/vscode-koverage/compare/v0.0.16...v0.0.17) (2023-10-29)
 - fix: :bug: Default settings are always written to the workspace settings.json [#42](https://github.com/tenninebt/vscode-koverage/issues/42)
 
-## [0.0.16](https://github.com/tenninebt/vscode-koverage/compare/0.0.15...0.0.16) (2023-10-26)
+## [0.0.16](https://github.com/tenninebt/vscode-koverage/compare/v0.0.15...v0.0.16) (2023-10-26)
 - Activate config for auto refresh debounce [#41](https://github.com/tenninebt/vscode-koverage/issues/41)
 
-## [0.0.15](https://github.com/tenninebt/vscode-koverage/compare/0.0.14...0.0.15) (2023-10-25)
+## [0.0.15](https://github.com/tenninebt/vscode-koverage/compare/v0.0.14...v0.0.15) (2023-10-25)
 - Implement auto refresh debounce [#41](https://github.com/tenninebt/vscode-koverage/issues/41)
 - Fix parse jacoco/clover/cobertura [#33](https://github.com/tenninebt/vscode-koverage/issues/33)
 
-## [0.0.14](https://github.com/tenninebt/vscode-koverage/compare/0.0.13...0.0.14) (2023-04-10)
+## [0.0.14](https://github.com/tenninebt/vscode-koverage/compare/v0.0.13...v0.0.14) (2023-04-10)
 - Enh [#32](https://github.com/tenninebt/vscode-koverage/pull/32): 
 - generate coverage command
 - support per workspace folder settings (mutli-root workspaces)
 - bugfix [#28](https://github.com/tenninebt/vscode-koverage/pull/28)
 
-## [0.0.13](https://github.com/tenninebt/vscode-koverage/compare/0.0.12...0.0.13) (2022-12-07)
+## [0.0.13](https://github.com/tenninebt/vscode-koverage/compare/v0.0.12...v0.0.13) (2022-12-07)
 - Enh [#21](https://github.com/tenninebt/vscode-koverage/issues/21): unable to use absolute file paths
 - Enh [#22](https://github.com/tenninebt/vscode-koverage/issues/22): unable to use "glob file names"
 
-## [0.0.12](https://github.com/tenninebt/vscode-koverage/compare/0.0.10...0.0.12) (2022-10-31)
+## [0.0.12](https://github.com/tenninebt/vscode-koverage/compare/0.0.10...v0.0.12) (2022-10-31)
 - Refactoring, no impact on the users' side
 
 ## [0.0.10](https://github.com/tenninebt/vscode-koverage/compare/0.0.9...0.0.10) (2022-10-27)
