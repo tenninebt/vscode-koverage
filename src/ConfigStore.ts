@@ -49,18 +49,15 @@ type ConfigOverride = {
 export class ConfigStore {
   private readonly configurationKey: string = "koverage"
 
-  private readonly _configChanged: rx.Subject<Config>
-  public readonly ConfigChanged: rx.Observable<Config>
-  private readonly _perFolderConfigChanged: Map<vscode.Uri, rx.Subject<Config>>
-
-  private readonly _perFolderConfig: Map<vscode.Uri, Config>
+  private readonly _configChanged: rx.Subject<void>
+  public readonly ConfigChanged: rx.Observable<void>
+  private readonly _foldersNotifiers: Map<vscode.Uri, rx.BehaviorSubject<Config>>
 
   constructor(private readonly logger: Logger) {
-    this._configChanged = new rx.Subject<Config>()
+    this._configChanged = new rx.Subject<void>()
     this.ConfigChanged = this._configChanged.asObservable()
 
-    this._perFolderConfigChanged = new Map<vscode.Uri, rx.Subject<Config>>
-    this._perFolderConfig = new Map<vscode.Uri, Config>()
+    this._foldersNotifiers = new Map<vscode.Uri, rx.BehaviorSubject<Config>>
   }
 
   public async init(): Promise<void> {
@@ -79,68 +76,34 @@ export class ConfigStore {
     })
   }
 
-  // private validateInput(event: vscode.ConfigurationChangeEvent): void {
-  //   const getConfigurationKey = (property: keyof Config): string => {
-  //     return `${this.configurationKey}.${property}`;
-  //   }
-  //   const getConfigurationValue = <T extends ConfigValueType>(property: keyof Config): T | undefined => {
-  //     const koverageConfig = vscode.workspace.getConfiguration(this.configurationKey)
-  //     return koverageConfig.get<T>(property)
-  //   }
-
-  //   const sufficientCoverageThresholdKey = getConfigurationKey("sufficientCoverageThreshold");
-  //   const lowCoverageThresholdKey = getConfigurationKey("lowCoverageThreshold");
-  //   const sufficientCoverageThreshold = getConfigurationValue<number>("sufficientCoverageThreshold")
-  //   const lowCoverageThreshold = getConfigurationValue<number>("lowCoverageThreshold")
-
-  //   if (event.affectsConfiguration(sufficientCoverageThresholdKey) &&
-  //     sufficientCoverageThreshold && (sufficientCoverageThreshold <= 0 || sufficientCoverageThreshold > 100)) {
-  //     throw new InvalidInputError(`Rule: 0 < sufficientCoverageThreshold(${sufficientCoverageThreshold}) < 100`)
-  //   }
-
-  //   if (event.affectsConfiguration(lowCoverageThresholdKey) &&
-  //     lowCoverageThreshold && (lowCoverageThreshold <= 0 || lowCoverageThreshold > 100)) {
-  //     throw new InvalidInputError(`Rule: 0 <= lowCoverageThreshold(${lowCoverageThreshold}) < 99`);
-  //   }
-
-  //   if ((event.affectsConfiguration(sufficientCoverageThresholdKey) || event.affectsConfiguration(lowCoverageThresholdKey)) &&
-  //     sufficientCoverageThreshold && lowCoverageThreshold &&
-  //     sufficientCoverageThreshold < lowCoverageThreshold) {
-  //     throw new InvalidInputError(`sufficientCoverageThreshold(${sufficientCoverageThreshold}) > lowCoverageThreshold(${lowCoverageThreshold})`);
-  //   }
-  // }
-
   public getObservable(workspaceFolder: vscode.WorkspaceFolder): rx.Observable<Config> {
-    return this._perFolderConfigChanged.get(workspaceFolder.uri)!.asObservable()
+    return this._foldersNotifiers.get(workspaceFolder.uri)!.asObservable()
   }
 
   public get(workspaceFolder: vscode.WorkspaceFolder): Config {
-    return this._perFolderConfig.get(workspaceFolder.uri)!
+    return this._foldersNotifiers.get(workspaceFolder.uri)!.value
   }
-
 
   private cleanUpRemovedWorkspaceFolders(removed: readonly vscode.WorkspaceFolder[]): void {
     removed.forEach((workspaceFolder) => {
-      this._perFolderConfigChanged.get(workspaceFolder.uri)?.complete()
-      this._perFolderConfigChanged.delete(workspaceFolder.uri)
+      this._foldersNotifiers.get(workspaceFolder.uri)?.complete()
+      this._foldersNotifiers.delete(workspaceFolder.uri)
     })
   }
 
   private async readConfig(): Promise<void> {
-
     const promises = vscode.workspace.workspaceFolders?.map(async (workspaceFolder) => {
       await this.readWorkspaceConfig(workspaceFolder)
     })
     await Promise.all(promises ?? [Promise.resolve()])
+    this._configChanged.next()
   }
 
   private async readWorkspaceConfig(workspaceFolder: vscode.WorkspaceFolder): Promise<void> {
-
     const rawConfig = vscode.workspace.getConfiguration(this.configurationKey, workspaceFolder)
     const configMeta = this.inspectConfig(rawConfig)
     const { config: validConfig, overridenConfig } = this.convertConfig(rawConfig, configMeta)
 
-    this._perFolderConfig.set(workspaceFolder.uri, validConfig)
     if (!isEmpty(overridenConfig)) {
       const invalidRules = Object.values(overridenConfig).filter((c) => !!c.reason).map((c) => `${c.reason!}`)
       const warnMessage = `Invalid configuration`
@@ -149,12 +112,13 @@ export class ConfigStore {
       await vscode.window.showWarningMessage(`[Koverage] ${warnMessage} ${warnDetails}`)
       await this.publishConfigToVSCode(rawConfig, overridenConfig)
     }
-    let notifier = this._perFolderConfigChanged.get(workspaceFolder.uri)
+    let notifier = this._foldersNotifiers.get(workspaceFolder.uri)
     if (!notifier) {
-      notifier = new rx.Subject<Config>()
-      this._perFolderConfigChanged.set(workspaceFolder.uri, notifier)
+      notifier = new rx.BehaviorSubject<Config>(validConfig)
+      this._foldersNotifiers.set(workspaceFolder.uri, notifier)
+    } else {
+      notifier.next(validConfig)
     }
-    notifier.next(validConfig)
   }
 
   private inspectConfig(rawWorkspaceConfig: vscode.WorkspaceConfiguration): ConfigMeta {
