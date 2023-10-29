@@ -4,6 +4,9 @@ All notable changes to the "Koverage" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.0.17](https://github.com/tenninebt/vscode-koverage/compare/0.0.16...0.0.17) (2023-10-29)
+- fix: :bug: Default settings are always written to the workspace settings.json [#42](https://github.com/tenninebt/vscode-koverage/issues/42)
+
 ## [0.0.16](https://github.com/tenninebt/vscode-koverage/compare/0.0.15...0.0.16) (2023-10-26)
 - Activate config for auto refresh debounce [#41](https://github.com/tenninebt/vscode-koverage/issues/41)
 
