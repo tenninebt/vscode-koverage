@@ -80,9 +80,9 @@ export abstract class CoverageNode extends BaseNode {
     }
 
     // @ts-expect-error Children are settable, thus this value can't be set in the constructor, maybe it should be updated whenever the children are updated
-    get iconPath(): { light: string; dark: string; } {
-        const light = iopath.join(__dirname, "..", "resources", "light", `${this.getCoverageLevel().toString()}.svg`);
-        const dark = iopath.join(__dirname, "..", "resources", "dark", `${this.getCoverageLevel().toString()}.svg`);
+    get iconPath(): { light: vscode.Uri; dark: vscode.Uri; } {
+        const light = vscode.Uri.file(iopath.join(__dirname, "..", "resources", "light", `${this.getCoverageLevel().toString()}.svg`));
+        const dark = vscode.Uri.file(iopath.join(__dirname, "..", "resources", "dark", `${this.getCoverageLevel().toString()}.svg`));
         return {
             light,
             dark

@@ -11,15 +11,14 @@ jobs:
   Release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: fregante/setup-git-user@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: fregante/setup-git-user@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
+      - uses: pnpm/action-setup@v4
       - name: "Install dependencies"
-        run: |
-          npm install -g yarn
-          yarn install
+        run: pnpm install
       - name: "Read Package.json"
         id: read_packageJson
         run: |
@@ -40,12 +39,12 @@ jobs:
         run: echo "::set-output name=vsixPath::${{ steps.parse_packageJson.outputs.name }}-${{ steps.parse_packageJson.outputs.version }}.vsix"
       - name: "Package"
         run: |
-          yarn build:prod
-          yarn vsce package --out ${{ steps.set_vsixPath.outputs.vsixPath }}
+          pnpm build:prod
+          pnpm vsce:package --out ${{ steps.set_vsixPath.outputs.vsixPath }}
       - name: "Publish to VSCode Marketplace"
-        run: yarn vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --packagePath "${{ steps.set_vsixPath.outputs.vsixPath }}"
+        run: pnpm vsce publish --pat "${{ secrets.VSCODE_MARKETPLACE_TOKEN }}" --packagePath "${{ steps.set_vsixPath.outputs.vsixPath }}"
       - name: "Publish to Open-VSX"
-        run: yarn ovsx publish "${{ steps.set_vsixPath.outputs.vsixPath }}" --pat ${{ secrets.OPEN_VSX_TOKEN }}
+        run: pnpm ovsx publish "${{ steps.set_vsixPath.outputs.vsixPath }}" --pat ${{ secrets.OPEN_VSX_TOKEN }}
       - name: "Create Tag"
         id: create_tag
         run: |

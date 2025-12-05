@@ -13,6 +13,7 @@ import { OutputChannelLogger } from "./Logger"
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
 
   const logger = new OutputChannelLogger()
+  logger.info("Activating Koverage extension")
 
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand

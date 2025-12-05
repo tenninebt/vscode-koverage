@@ -10,17 +10,14 @@
   ],
   "repository": "https://github.com/tenninebt/vscode-koverage",
   "description": "View the code coverage per folder/file in the test view",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "engines": {
-    "vscode": "^1.76.0"
+    "vscode": "^1.100.0"
   },
   "categories": [
     "Other"
   ],
   "icon": "resources/icon.png",
-  "activationEvents": [
-    "onView:koverage"
-  ],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
@@ -136,16 +133,17 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
-    "compile": "yarn clean && tsc",
+    "compile": "pnpm clean && tsc",
     "build:prod": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "build:watch": "webpack --mode development --watch",
+    "vsce:package": "pnpm vsce package --no-dependencies",
     "lint": "eslint ./src"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
     "@types/node": "^18.15.11",
-    "@types/vscode": "^1.76.0",
+    "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^5.57.1",
     "@vscode/vsce": "^2.18.0",
     "eslint": "^8.37.0",
@@ -165,6 +163,7 @@
     "@7sean68/jacoco-parse": "2.2.0",
     "@cvrg-report/clover-json": "0.3.2",
     "cobertura-parse": "fschwaiger/cobertura-parse#82b0333cb1580f6f337b5d44b04e2f5ca8711b7e",
+    "glob": "^8.1.0",
     "lcov-parse": "1.0.0",
     "rxjs": "^7.8.0"
   },
@@ -173,5 +172,5 @@
     "mocha": "^10.2.0",
     "mkdirp": "^3.0.1"
   },
-  "packageManager": "yarn@4.0.1"
+  "packageManager": "pnpm@10.24.0"
 }
