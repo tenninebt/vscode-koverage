@@ -1,3 +1,9 @@
+# ARCHIVED
+
+Have no time to maintain and there is a recent alternative combining both this extension features and [Ryan Luker's Coverage Gutters](https://github.com/ryanluker/vscode-coverage-gutters)
+
+https://github.com/fogio-org/vscode-coverlens
+
 # Koverage
 
 This extension adds a tree view to the test view container. It shows the coverage per file/folder.
